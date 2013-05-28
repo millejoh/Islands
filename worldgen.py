@@ -114,7 +114,8 @@ def clamp(min, max, val):
         return val
 
 def find_index(indices, val):
-    """"""
+    """
+    """
     for bound, i in zip(indices, xrange(len(indices))):
         if val < bound:
             return (i-1, i)
@@ -173,7 +174,7 @@ class Heightmap(object):
         tcod.heightmap_normalize(self.__data, min, max)
 
     def lerp(self, hm2, hm_result, coef):
-        return tcod.heightmap_lerp_hm(self.__data, b.__data, hm_result, coef)
+        return tcod.heightmap_lerp_hm(self.__data, self.__data, hm_result, coef)
 
     def interpolated_value(self, x, y):
         return tcod.heightmap_get_interpolated_value(self.__data, x, y)
@@ -186,7 +187,7 @@ class Heightmap(object):
 
     def add_fbm(self, noise, mulx, muly, addx, addy, octaves, delta, scale):
         """Perturb  by adding fbm noise values."""
-        tcod.heightmap_add_fbm(self.__data, noise, mulx, muly, addx, addy, octaves, delta, scale):
+        tcod.heightmap_add_fbm(self.__data, noise, mulx, muly, addx, addy, octaves, delta, scale)
 
 
 class WorldGenerator(object):
@@ -198,6 +199,7 @@ class WorldGenerator(object):
         self._hm_precip = Heightmap(width, height)
         self._hm_temperature = Heightmap(width, height)
         self._biome_map = np.zeros((width, height))
+        self._clouds = np.zeros((width, height))
         self.wgRng = tcod.random_get_instance()
         self.noise = tcod.noise_new(2, random=self.wgRng)
 
@@ -210,8 +212,7 @@ class WorldGenerator(object):
     def real_altitude(self, x, y):
         ih = clamp(0, 255, 256*int(self.getInterpolatedAltitude(x,y)))
         (i0, i1) = find_index(altIndexes, ih)
-
-	return altitudes[i0] + (altitudes[i1]-altitudes[i0]) * (ih-altIndexes[i0])/(altIndexes[i1]-altIndexes[i0])
+	return altitudes[i0] + (altitudes[i1] - altitudes[i0]) * (ih-altIndexes[i0])/(altIndexes[i1]-altIndexes[i0])
 
     def precipitation(self, x, y):
         iprec = clamp(0, 255, 256*int(tcod.heightmap_get_value(self._hm_precip, x,y)))
@@ -284,6 +285,16 @@ class WorldGenerator(object):
                     h = sandHeight + coef*coef*coef*(1.0 - sandHeight)
                     hm[x][y] = h
 
+        f = []
+        for x in range(self.width):
+            f[0] = 6.0 * x / self.width
+            for y in range(self.height):
+                f[1] = 6.0 * y / self.height
+                clouds[x][y] = 0.5 * (1.0 + 0.8*tcod.noise_get_fbm(self.noise, f, 4.0, tcod.NOISE_SIMPLEX))
+        
+
+                                    
+           
         
 
 
