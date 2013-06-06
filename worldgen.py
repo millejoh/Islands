@@ -114,9 +114,7 @@ def clamp(min, max, val):
         return val
 
 def find_index(indices, val):
-    """
-    """
-    for bound, i in zip(indices, xrange(len(indices))):
+    for bound, i in zip(indices, range(len(indices))):
         if val < bound:
             return (i-1, i)
     return (len(indices), len(indices)-1)
@@ -125,69 +123,69 @@ class Heightmap(object):
     def __init__(self, width, height):
         self.width = width
         self.height = height
-        self.__data = tcod.heightmap_new(width, height)
+        self._data = tcod.heightmap_new(width, height)
 
     def __del__(self):
-        tcod.heightmap_delete(self.__data)
+        tcod.heightmap_delete(self._data)
 
     def __getitem__(self, index):
         # Bounds checking?
         x, y = index
         assert x < self.width and y < self.height
-        return tcod.heightmap_get_value(self.__data, x, y)
+        return tcod.heightmap_get_value(self._data, x, y)
 
     def __setitem__(self, index, value):
         x, y = index
         assert x < self.width and y < self.height
-        tcod.heightmap_set_value(self.__data, x, y, value)
+        tcod.heightmap_set_value(self._data, x, y, value)
 
     def __add__(self, value):
         if isinstance(value, Heightmap):
-            tcod.heightmap_add_hm(self.__data, value, self.__data)
+            tcod.heightmap_add_hm(self._data, value, self._data)
         else:
-            tcod.heightmap_add(self.__data, value)
+            tcod.heightmap_add(self._data, value)
         return self
 
     def __mul__(self, value):
         if isinstance(value, Heightmap):
-            tcod.heightmap_multiply_hm_hm(self.__data, value, self.__data)
+            tcod.heightmap_multiply_hm_hm(self._data, value, self._data)
         else:
-            tcod.heightmap_scale(self.__data, value)
+            tcod.heightmap_scale(self._data, value)
         return self
 
     def __sub__(self, value):
-        tcod.heightmap_add(self.__data, -value)
+        tcod.heightmap_add(self._data, -value)
         return self
 
     def copy(self):
         nhm = Heightmap(self.width, self.height)
-        nhm.__data = tcod.heightmap_copy(self.__data)
+        tcod.heightmap_copy(self._data, nhm._data)
         return nhm
 
     def clear_map(self):
-        tcod.heightmap_clear(self.__data)
+        tcod.heightmap_clear(self._data)
 
     def clamp(self, min, max):
-        tcod.heightmap_clamp(self.__data, min. max)
+        tcod.heightmap_clamp(self._data, min. max)
 
-    def normalize(self, min, max):
-        tcod.heightmap_normalize(self.__data, min, max)
+    def normalize(self, min=0.0, max=1.0):
+        tcod.heightmap_normalize(self._data, min, max)
 
     def lerp(self, hm2, hm_result, coef):
-        return tcod.heightmap_lerp_hm(self.__data, self.__data, hm_result, coef)
+        return tcod.heightmap_lerp_hm(self._data, self._data, hm_result, coef)
 
     def interpolated_value(self, x, y):
-        return tcod.heightmap_get_interpolated_value(self.__data, x, y)
+        return tcod.heightmap_get_interpolated_value(self._data, x, y)
 
-    def normal(self, x, y):
-        return tcod.heightmap_get_normal(self.__data, x, y)
+    def normal(self, x, y, waterlevel):
+        return tcod.heightmap_get_normal(self._data, x, y, waterlevel)
 
     def add_hill(self, cx, cy, radius, height):
-        tcod.heightmap_add_hill(self.__data, cx, cy, radius, height)
+        tcod.heightmap_add_hill(self._data, cx, cy, radius, height)
 
     def add_fbm(self, noise, mulx, muly, addx, addy, octaves, delta, scale):
-        """Perturb  by adding fbm noise values."""
-        tcod.heightmap_add_fbm(self.__data, noise, mulx, muly, addx, addy, octaves, delta, scale)
+        "Perturb  by adding fbm noise values."
+        tcod.heightmap_add_fbm(self._data, noise, mulx, muly, addx, addy, octaves, delta, scale)
 
 
 class WorldGenerator(object):
@@ -205,18 +203,19 @@ class WorldGenerator(object):
 
     def altitude(self, x, y):
         return self._hm[x, y]
-
+        
     def interpolated_altitude(self, x, y):
         return self._hm.interpolated_value(x, y)
 
     def real_altitude(self, x, y):
         ih = clamp(0, 255, 256*int(self.getInterpolatedAltitude(x,y)))
         (i0, i1) = find_index(altIndexes, ih)
-	return altitudes[i0] + (altitudes[i1] - altitudes[i0]) * (ih-altIndexes[i0])/(altIndexes[i1]-altIndexes[i0])
+
+        return altitudes[i0] + (altitudes[i1]-altitudes[i0]) * (ih-altIndexes[i0])/(altIndexes[i1]-altIndexes[i0])
 
     def precipitation(self, x, y):
-        iprec = clamp(0, 255, 256*int(tcod.heightmap_get_value(self._hm_precip, x,y)))
-	(i0, i1) = find_index(precIndexes, iprec)
+        iprec = clamp(0, 255, 256*int(self._hm_precip[x,y])) #tcod.heightmap_get_value(self._hm_precip, x,y)))
+        (i0, i1) = find_index(precIndexes, iprec)
 
         return precipitations[i0] + (precipitations[i1]-precipitations[i0]) * (iprec-precIndexes[i0])/(precIndexes[i1]-precIndexes[i0])
 
@@ -227,22 +226,22 @@ class WorldGenerator(object):
         return self._biome_map[int(x), int(y)]
 
     def interpolated_normal(self, x, y):
-        self._hm2.normal(x, y, sandHeight)
+        return self._hm2.normal(x, y, sandHeight)
 
     def on_sea_p(self, x, y):
         return self.interpolated_altitude(x, y) <= sandHeight
 
     def add_hill(self, cnt, base_radius, radius_var, height):
-        for i in xrange(cnt):
+        for i in range(cnt):
             min_radius = base_radius * (1.0-radius_var)
             max_radius = base_radius * (1.0+radius_var)
-            radius = tcod.random_get_float(hillMinRadius, hillMaxRadius)
+            radius = tcod.random_get_float(self.wgRng, min_radius, max_radius)
             xh = tcod.random_get_int(self.wgRng, 0, self.width-1)
             yh = tcod.random_get_int(self.wgRng, 0, self.height-1)
-            self._hm._add_hill(float(xh), float(yh), radius, height)
+            self._hm.add_hill(float(xh), float(yh), radius, height)
     
     def set_land_mass(self, land_mass, water_level):
-        """Ensure that a proportion <land_mass | [0,1]> of the map is above sea level."""
+        "Ensure that a proportion <land_mass | [0,1]> of the map is above sea level."
         heightcount = np.zeros(256)
         for x in range(self.width):
             for y in range(self.height):
@@ -255,7 +254,7 @@ class WorldGenerator(object):
         for i in count(0):
             if tcnt >= self.width*self.height*(1.0-land_mass):
                 break
-            tcnt += heightcnt[i]
+            tcnt += heightcount[i]
         
         new_water_level = i / 255.0
         land_coef = (1.0 - water_level) / (1.0 - new_water_level)
@@ -269,7 +268,7 @@ class WorldGenerator(object):
                     h = h * water_coef
                 self._hm[x, y] = h
 
-    def build_base_map():
+    def build_base_map(self):
         self.add_hill(600, 16*self.width/200, 0.7, 0.3)
         self._hm.normalize()
         self._hm.add_fbm(self.noise, 2.20*self.width/400, 2.2*self.width/400, 0, 0, 10.0, 1.0, 2.05)
@@ -279,18 +278,18 @@ class WorldGenerator(object):
         # Fix land/mountain ratio using x^3 curve above sea level
         for x in range(self.width):
             for y in range(self.height):
-                h = self._hm[x][y]
+                h = self._hm[x,y]
                 if h >= sandHeight:
                     coef = (h - sandHeight) / (1.0 - sandHeight)
                     h = sandHeight + coef*coef*coef*(1.0 - sandHeight)
-                    hm[x][y] = h
+                    self._hm[x,y] = h
 
-        f = []
+        f = [0,0]
         for x in range(self.width):
             f[0] = 6.0 * x / self.width
             for y in range(self.height):
                 f[1] = 6.0 * y / self.height
-                clouds[x][y] = 0.5 * (1.0 + 0.8*tcod.noise_get_fbm(self.noise, f, 4.0, tcod.NOISE_SIMPLEX))
+                self._clouds[x,y] = 0.5 * (1.0 + 0.8*tcod.noise_get_fbm(self.noise, f, 4.0, tcod.NOISE_SIMPLEX))
         
 
                                     

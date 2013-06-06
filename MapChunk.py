@@ -1,7 +1,7 @@
 # Try to find libtcodpy
-import os, sys, platform
+import sys, platform
 linux_path = '/home/millejoh/Documents/libtcod/python'
-win_path = 'c:/Users/E341194/Applications/libtcod'
+win_path = 'c:/Users/E341194/Applications/libtcod-1.5.2/python'
 
 if platform.system() == 'Linux':
     if linux_path not in sys.path:
