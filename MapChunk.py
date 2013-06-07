@@ -15,9 +15,22 @@ try:
 except:
     print('I am running on {0} and I cannot find libtcodpy.'.format(platform.system()))
 
+default_font = 'terminal8x8_aa_tc.png'
+
 class MapChunk(object):
     def __init__(self, width, height, offset=[0, 0]):
         self._offset = offset
         self._width = width
         self._height = height
         self._hmap = tcod.heightmap_new(width, height)
+
+class Console(object):
+
+class Stage(object):
+    root_console = None
+    def __init__(self, width, height, font=default_font):
+        if Stage.root_console is none:
+            Stage.root_console = tcod.console_new
+        self._console = 
+        
+
