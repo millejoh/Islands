@@ -30,72 +30,23 @@ class MapChunk(object):
         self._height = height
         self._hmap = tcod.heightmap_new(width, height)
 
-class Player(object):
-    def __init__(self, start_x, start_y, color = tcod.white):
-        self._x, self._y = start_x, start_y
+class gObject(object):
+    def __init__(self, x, y, char, color):
+        self._x, self._y = x, y
+        self._char = char
         self._color = color
 
-    def draw(self, console=root_console):
+    def draw(self, console):
         tcod.console_set_default_foreground(console, self._color)
-        tcod.console_put_char(console, self._x, self._y, '@')
+        tcod.console_put_char(console, self._x, self._y, self._char, tcod.BKGND_NONE)
 
-class Console(object):
-    pass
+    def clear(self, console):
+        tcod.console_put_char(console, self._x, self._y, ' ', tcod.BKGND_NONE)
 
-class Stage(object):
-    def __init__(self, width, height, title=b'Stage', font_file=default_font, datax='', fullscreen=False, renderer=tcod.RENDERER_GLSL):
-        self._width = width
-        self._height = height
-        self._title = title
-        self._fullscreen = fullscreen
-        self._renderer = renderer
-        self.end_game = False
-        self.player = Player(0,0)
-        if os.path.exists(font_file):
-            tcod.console_set_custom_font(font_file, tcod.FONT_LAYOUT_TCOD | tcod.FONT_TYPE_GREYSCALE)
-        else:
-            raise FileNotFoundError("Font file {0} not found.".format(font_file))
-
-    def handle_keys(self, key_event):
-        if key_event.vk == tcod.KEY_UP:
-            self.player._y -= 1
-        if key_event.vk == tcod.KEY_DOWN:
-            self.player._y += 1
-        if key_event.vk == tcod.KEY_RIGHT:
-            self.player._x += 1
-        if key_event.vk == tcod.KEY_LEFT:
-            self.player._x -= 1
-
-#    def handle_mouse(self, mouse):
-#        if mouse.lbutton:
-            
-
-    def handle_events(self):
-        mouse, key = tcod.Mouse(), tcod.Key()
-        tcod.sys_check_for_event(tcod.EVENT_ANY, key, mouse)
-        return key, mouse
-
-    
-    def run(self, max_fps=30):
-        tcod.console_init_root(self._width, self._height, self._title, self._fullscreen,
-                               self._renderer)        
-        tcod.sys_set_fps(max_fps)
-        tcod.console_set_default_background(root_console, tcod.darker_sepia)
-        tcod.console_set_keyboard_repeat(1,1)
-        while (not self.end_game) and (not tcod.console_is_window_closed()):
-            key, mouse = self.handle_events()
-            self.handle_keys(key)
-            if key.vk == tcod.KEY_ESCAPE:
-                tcod.console_clear(root_console)
-                tcod.console_print(root_console, 0, 0, "Exiting...")
-                tcod.console_flush()
-                break
-            tcod.console_clear(root_console)
-            self.player.draw(root_console)
-            tcod.console_print(root_console, 0, 0, "Current key pressed is {0}.".format(key.vk))
-            tcod.console_print(root_console, 0, 1, "Cursor at ({0}, {1}).".format(mouse.cx, mouse.cy))
-            tcod.console_flush()
+class Player(gObject):
+    def __init__(self, x, y):
+        self._x, self._y = x, y
+        self._char = '@'
+        self._color = tcod.white
 
 
-
-#if __name__ == '__main__':
