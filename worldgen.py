@@ -1,5 +1,7 @@
+
 # A direct translation of Jice's worlden tool.
-import libtcodpy as tcod
+import tcod
+from tcod.tools import Heightmap
 import numpy as np
 from itertools import count
 
@@ -7,15 +9,15 @@ from itertools import count
 ### --------------------------
 
 biomeDiagram = [ 
-    # artic/alpine climate (below -5°C)
+    # artic/alpine climate (below -5degC)
     [ 'TUNDRA', 'TUNDRA', 'TUNDRA', 'TUNDRA', 'TUNDRA' ],
-    # cold climate (-5 / 5 °C)
+    # cold climate (-5 / 5 degC)
     [ 'COLD_DESERT', 'GRASSLAND', 'BOREAL_FOREST', 'BOREAL_FOREST', 'BOREAL_FOREST' ],
-    # temperate climate (5 / 15 °C)
+    # temperate climate (5 / 15 degC)
     [ 'COLD_DESERT', 'GRASSLAND', 'TEMPERATE_FOREST', 'TEMPERATE_FOREST', 'TROPICAL_MONTANE_FOREST' ],
-    # warm climate (15 - 20°C)
+    # warm climate (15 - 20 degC)
     [ 'HOT_DESERT', 'SAVANNA', 'TROPICAL_DRY_FOREST', 'TROPICAL_EVERGREEN_FOREST', 'TROPICAL_EVERGREEN_FOREST' ],
-    # tropical climate (above 20 °C)
+    # tropical climate (above 20 degC)
     [ 'HOT_DESERT', 'THORN_FOREST', 'TROPICAL_DRY_FOREST', 'TROPICAL_EVERGREEN_FOREST', 'TROPICAL_EVERGREEN_FOREST' ] ]
 
 sandHeight  = 0.12
@@ -70,7 +72,7 @@ altColors = [ tcod.Color(24,165,255), # -2000
 ### Precipitation color map
 ### -----------------------
 precIndexes = [	4,8,12,16,20,24,28,32,36,40,50,60,70,80,100,120,140,160,255 ]
-precipitations = [ 0,1,2,3,4,5,6,7,8,9,10,13,15,18,20,25,30,35,40 ]  # cm / m² / year
+precipitations = [ 0,1,2,3,4,5,6,7,8,9,10,13,15,18,20,25,30,35,40 ]  # cm / m2 / year
 
 precColors = [ tcod.Color(128,0,0), # < 4
                tcod.Color(173,55,0), # 4-8
@@ -97,13 +99,21 @@ precColors = [ tcod.Color(128,0,0), # < 4
 
 tempIndexes = [ 0,42,84,126,168,210,255 ]
 temperatures = [ -30,-20,-10,0,10,20,30 ]
-tempKeyColor = [ tcod.Color(180,8,130), # -30 °C
-                 tcod.Color(32,1,139), # -20 °C
-                 tcod.Color(0,65,252),# -10 °C
-                 tcod.Color(37,255,236),# 0 °C
-                 tcod.Color(255,255,1), # 10 °C
-                 tcod.Color(255,29,4), # 20 °C
-                 tcod.Color(80,3,0) ] # 30 °C
+tempKeyColor = [ tcod.Color(180,8,130), # -30 degC
+                 tcod.Color(32,1,139), # -20 degC
+                 tcod.Color(0,65,252),# -10 degC
+                 tcod.Color(37,255,236),# 0 degC
+                 tcod.Color(255,255,1), # 10 degC
+                 tcod.Color(255,29,4), # 20 degC
+                 tcod.Color(80,3,0) ] # 30 degC
+
+### What are these? They appear just before erode_map
+### ---------------
+
+dirx = [0, -1, 0, 1, -1, 1, -1, 0, 1]
+diry = [0, -1, -1, -1, 0, 0, 1, 1, 1]
+dircoef = [1.0, 1.0/1.414, 1.0, 1.0/1.414, 1.0, 1.0, 1.0/1.414, 1.0,1.0/1.414]
+oppdir = [0, 8, 7, 6, 5, 4, 3, 2, 1]
 
 def clamp(min, max, val):
     if min > val:
@@ -118,75 +128,6 @@ def find_index(indices, val):
         if val < bound:
             return (i-1, i)
     return (len(indices), len(indices)-1)
-
-class Heightmap(object):
-    def __init__(self, width, height):
-        self.width = width
-        self.height = height
-        self._data = tcod.heightmap_new(width, height)
-
-    def __del__(self):
-        tcod.heightmap_delete(self._data)
-
-    def __getitem__(self, index):
-        # Bounds checking?
-        x, y = index
-        assert x < self.width and y < self.height
-        return tcod.heightmap_get_value(self._data, x, y)
-
-    def __setitem__(self, index, value):
-        x, y = index
-        assert x < self.width and y < self.height
-        tcod.heightmap_set_value(self._data, x, y, value)
-
-    def __add__(self, value):
-        if isinstance(value, Heightmap):
-            tcod.heightmap_add_hm(self._data, value, self._data)
-        else:
-            tcod.heightmap_add(self._data, value)
-        return self
-
-    def __mul__(self, value):
-        if isinstance(value, Heightmap):
-            tcod.heightmap_multiply_hm_hm(self._data, value, self._data)
-        else:
-            tcod.heightmap_scale(self._data, value)
-        return self
-
-    def __sub__(self, value):
-        tcod.heightmap_add(self._data, -value)
-        return self
-
-    def copy(self):
-        nhm = Heightmap(self.width, self.height)
-        tcod.heightmap_copy(self._data, nhm._data)
-        return nhm
-
-    def clear_map(self):
-        tcod.heightmap_clear(self._data)
-
-    def clamp(self, min, max):
-        tcod.heightmap_clamp(self._data, min. max)
-
-    def normalize(self, min=0.0, max=1.0):
-        tcod.heightmap_normalize(self._data, min, max)
-
-    def lerp(self, hm2, hm_result, coef):
-        return tcod.heightmap_lerp_hm(self._data, self._data, hm_result, coef)
-
-    def interpolated_value(self, x, y):
-        return tcod.heightmap_get_interpolated_value(self._data, x, y)
-
-    def normal(self, x, y, waterlevel):
-        return tcod.heightmap_get_normal(self._data, x, y, waterlevel)
-
-    def add_hill(self, cx, cy, radius, height):
-        tcod.heightmap_add_hill(self._data, cx, cy, radius, height)
-
-    def add_fbm(self, noise, mulx, muly, addx, addy, octaves, delta, scale):
-        "Perturb  by adding fbm noise values."
-        tcod.heightmap_add_fbm(self._data, noise, mulx, muly, addx, addy, octaves, delta, scale)
-
 
 class WorldGenerator(object):
     def __init__(self, width, height):
@@ -290,11 +231,19 @@ class WorldGenerator(object):
             for y in range(self.height):
                 f[1] = 6.0 * y / self.height
                 self._clouds[x,y] = 0.5 * (1.0 + 0.8*tcod.noise_get_fbm(self.noise, f, 4.0, tcod.NOISE_SIMPLEX))
-        
+                
+    def smooth_map(self):
+	# 3x3 kernel for smoothing operations
+        smooth_ks = 9
+        smooth_dx = [-1, 0, 1, -1, 0, 1, -1, 0, 1]
+        smooth_dy = [-1, -1, -1, 0, 0, 0, 1, 1, 1]
+        smooth_weight = [2, 8, 2, 8, 20, 8, 2, 8, 2]
 
-                                    
-           
-        
+        self._hm.kernel_transform(smooth_ks, smooth_dx, smooth_dy, 
+                                  smooth_weight, -1000, 1000)
+        self._hm2.kernel_transform(smooth_ks, smooth_dx, smooth_dy, 
+                                   smooth_weight, -1000, 1000)
+        self._hm.normalize()
 
 
 ### Tests

@@ -1,34 +1,7 @@
 import sys, platform
 import os.path
 from warnings import warn
-from MapChunk import Player
-
-linux_path = '/home/millejoh/Documents/libtcod/python/'
-win_path = 'c:/Users/E341194/Applications/libtcod-1.5.2/python/'
-
-try:
-    from IPython import embed_kernel
-except ImportError:
-    pass
-
-if platform.system() == 'Linux':
-    root_dir = b'/home/millejoh/Documents/libtcod/'
-    if linux_path not in sys.path:
-        sys.path.append(linux_path)
-elif platform.system() == 'Windows':
-    root_dir = b'c:/Users/E341194/Applications/libtcod-1.5.2/'
-    if win_path not in sys.path:
-        sys.path.append(win_path)
-
-try:
-    import libtcodpy as tcod
-except:
-    print('I am running on {0} and I cannot find tcodpy.'.format(platform.system()))
-
-root_console = 0 # This means NULL for you C folk.
-default_font = os.path.join(root_dir, b'data/fonts/consolas10x10_gs_tc.png')
-
-key_dispatch_table = {}
+import tcod
 
 # Make a subclass of Tuple?
 class ConsoleCell(object):
@@ -160,7 +133,7 @@ class Console(object):
 class RootConsole(Console):
     active_root = None
 
-    def __init__(self, width=80, height=50, title=b'Stage', background = tcod.darker_sepia, font_file=default_font, datax='', fullscreen=False, renderer=tcod.RENDERER_GLSL, max_fps=30):
+    def __init__(self, width=80, height=50, title=b'Stage', background = tcod.darker_sepia, font_file=tcod.default_font, datax='', fullscreen=False, renderer=tcod.RENDERER_GLSL, max_fps=30):
         if RootConsole.active_root:
             warn('Root console already initialized. Any parameters supplied with call are being ignored.')
         else:
@@ -173,7 +146,7 @@ class RootConsole(Console):
             tcod.console_init_root(width, height, title,
                                    fullscreen, renderer)
             tcod.sys_set_fps(max_fps)
-            self._c = root_console
+            self._c = tcod.root_console
             self.width = width
             self.height = height
             self.title = title
@@ -198,13 +171,13 @@ class RootConsole(Console):
             key, mouse = self.handle_events()
             self.handle_keys(key)
             if key.vk == tcod.KEY_ESCAPE:
-                tcod.console_clear(root_console)
-                tcod.console_print(root_console, 0, 0, "Exiting...")
+                tcod.console_clear(tcod.root_console)
+                tcod.console_print(tcod.root_console, 0, 0, "Exiting...")
                 tcod.console_flush()
                 break
-            tcod.console_clear(root_console)
-            tcod.console_print(root_console, 0, 0, "Current key pressed is {0}.".format(key.vk))
-            tcod.console_print(root_console, 0, 1, "Cursor at ({0}, {1}).".format(mouse.cx, mouse.cy))
+            tcod.console_clear(tcod.root_console)
+            tcod.console_print(tcod.root_console, 0, 0, "Current key pressed is {0}.".format(key.vk))
+            tcod.console_print(tcod.root_console, 0, 1, "Cursor at ({0}, {1}).".format(mouse.cx, mouse.cy))
             tcod.console_flush()
 
 

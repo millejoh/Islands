@@ -87,3 +87,36 @@ class Heightmap(object):
         """
         tcod.heightmap_mid_point_displacement(self._data, rng, roughness)
 
+    def normalize(self, min=0.0, max=1.0):
+        """Normalize heightmap values between <min> and <max>.
+
+        The heightmape is translated and scaled so that the lowest
+        cell value becomes min and the highest cell value becomes max
+        min < max."""
+        tcod.heightmap_normalize(self._data, min, max)
+
+    def kernel_transform(self, kernel_size, dx, dy, weight, min_level, max_level):
+        """Apply a generic transformation to the heightmap.
+
+        This function allows you to apply a generic transformation on
+        the map, so that each resulting cell value is the weighted sum of
+        several neighbour cells. This can be used to smooth/sharpen the
+        map. 
+
+        kernel_size = Size of transformation.  
+
+        dx, dy = Array of kernel_size coordinates. The coordinates are
+                 relative to the current cell (0,0) is current cell,
+                 (-1,0) is west cell, (0,-1) is north cell, (1,0) is
+                 east cell, (0,1) is south cell, ...
+
+        weight = Array of kernel_size weights. The value of each
+                 neighbour cell is scaled by its corresponding weight.
+
+        min_level = The transformation is only applied to cells which
+                    value is >= minLevel.
+
+        max_level = The transformation is only applied to cells which
+                    value is <= maxLevel."""
+        tcod.heightmap_kernel_transform(self._data, kernel_size, dx, dy, weight,
+                                        min_level, max_level)
