@@ -1,4 +1,5 @@
 import tcod
+import numpy as np
 
 class Heightmap(object):
     def __init__(self, width, height):
@@ -120,3 +121,10 @@ class Heightmap(object):
                     value is <= maxLevel."""
         tcod.heightmap_kernel_transform(self._data, kernel_size, dx, dy, weight,
                                         min_level, max_level)
+    def as_ndarray(self):
+        w, h = self.width, self.height
+        ndarray = np.zeros((self.width,self.height),dtype=float)
+        for i in range(w):
+            for j in range(h):
+                ndarray[i,j] = self[i,j]
+        return ndarray
