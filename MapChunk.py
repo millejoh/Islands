@@ -23,8 +23,6 @@ biome_colors = { 'SNOW'      : tcod.Color(248,248,248),
 		 'TROPICAL_SEASONAL_FOREST'   : tcod.Color(169,204,164),
 		 'SUBTROPICAL_DESERT'         : tcod.Color(233,221,199) }
 
-def determine_biome(temperature, precipitation):
-    
 class Tile(object):
     def __init__(self):
         self.elevation = 0.0
@@ -45,7 +43,7 @@ class MapChunk(object):
         self.elevation.clear_map()
         self.precipitation = Heightmap(width, height)
         self.temperature = Heightmap(width, height)
-        self.terrain = np.zeros(width, height)
+        self.terrain = np.zeros((width, height))
 
     def __del__(self):
         tcod.random_delete(self.__rng)
@@ -53,7 +51,7 @@ class MapChunk(object):
     def random_island(self, sx, sy, width, height, roughness=1.0):
         """Add an island to the map.
 
-        sx, sy        = Bottom left coordinates of the island box.
+        sx, sy        = Top left coordinates of the island box.
         width, height = Dimensions of the island box.
         roughness     = Fractional value to control roughness of the island's
                         elevational transitions.
@@ -66,13 +64,13 @@ class MapChunk(object):
             x, y = r.randint(sx, sx+width), r.randint(sy, sy+height)
             e.add_hill(x, y, radius, radius*radius)
 
-    def draw_terrain_region(rect, console):
+    def draw_terrain_region(self, rect, console):
         ox, oy, w, h = rect
         for i in range(w):
             x = ox + i
             for j in range(h):
                 y = oy + j
-                console[x,y] = (' ', 
+                console[x,y] = (' ', tcod.foreground, biome_colors[self.terrain[x,y]])
 
 
 class gObject(object):
