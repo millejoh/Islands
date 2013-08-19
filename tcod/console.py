@@ -133,6 +133,20 @@ class Console(object):
 class RootConsole(Console):
     active_root = None
 
+    @classmethod
+    def screen_width(cls):
+        if cls.active_root:
+            return cls.active_root.width
+        else:
+            return -1
+
+    @classmethod
+    def screen_height(cls):
+        if cls.active_root:
+            return cls.active_root.height
+        else:
+            return -1
+        
     def __init__(self, width=80, height=50, title=b'Stage', background = tcod.darker_sepia, font_file=tcod.default_font, datax='', fullscreen=False, renderer=tcod.RENDERER_GLSL, max_fps=30):
         if RootConsole.active_root:
             warn('Root console already initialized. Any parameters supplied with call are being ignored.')
