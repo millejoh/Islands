@@ -18,8 +18,10 @@ and background color."""
 class Console(object):
     def __init__(self, width, height):
         self.width = width
-        self.heigh = height
+        self.height = height
         self._c = tcod.console_new(width, height)
+        self.foreground = tcod.white
+        self.background = tcod.black
 
     def __del__(self):
         tcod.console_delete(self._c)
@@ -129,9 +131,38 @@ class Console(object):
 
     def clear(self):
         tcod.console_clear(self._c)
+    
+    def print_double_frame(self, x, y, width, height, clear=True,
+                           flag=tcod.BKGND_DEFAULT, fmt=0):
+        """Draw a rectangle like print_frame but draws using `double-line` characters.
+        
+        """
+        tcod.console_print_double_frame(self._c, x, y, width, height, clear,
+                                        flag, fmt)
+
+    def print_frame(self, x, y, width, height, clear=True,
+                    flag=tcod.BKGND_DEFAULT, fmt=0):
+        """Draw a rectangle with size `width` and `height` located at position (
+
+        """
+        pass
+
+    def blit(self, dest, sx, sy, width, height, dx, dy, fore_alpha, back_alpha):
+        """Blit rectangular region of a console to a specific position in another console.
+
+        dest = Destination console.
+        sx, sy = Upper left corner of rectangle in source console to be blitted.
+        width, height = Size of region in source console to be blitted.
+        dx, dy = Location in destination console where rectangle will be blitted.
+        fore_alpha, back_alpha = Foreground and background transparency parameters."""
+        tcod.console_blit(self._c, sx, sy, width, height, dest._c, dx, dy,
+                          fore_alpha, back_alpha)
+
 
 class RootConsole(Console):
     active_root = None
+    mouse_x = 0
+    mouse_y = 0
 
     @classmethod
     def screen_width(cls):
