@@ -13,8 +13,8 @@ DIMMED = 75 # Common values for window_transparency
 BOLD_FACTOR = 1.4 # Multiplier for producing a "bold" version of a color.
 mouse_x, mouse_y = 0, 0
 
-WindowStack = []
-HiddenWindowStack = []
+WINDOW_STACK = []
+HIDDEN_WINDOW_STACK = []
 
 def clamp(min, max, val):
     if min > val:
@@ -23,6 +23,7 @@ def clamp(min, max, val):
         return max
     else:
         return val
+
 
 def translate_negative_coords(x, y, window = None):
     assert RootConsole.screen_width() > 0
@@ -75,7 +76,7 @@ def redraw_all_windows(exclude=None):
     """Copy all visible windows onto the root console.
 
     exclude = list of window instances to exclude, defaults to None."""
-    windows = [win for win in WindowStack if win not in exclude]
+    windows = [win for win in WINDOW_STACK if win not in exclude]
     RootConsole.active_root.clear()
     for win in windows.reverse():
         win.prepare()
@@ -84,7 +85,7 @@ def redraw_all_windows(exclude=None):
                             RootConsole.screen_width(),
                             RootConsole.screen_height() )
 
-def top_window_at(x, y, stack=WindowStack, override_modal=False):
+def top_window_at(x, y, stack=WINDOW_STACK, override_modal=False):
     """Return the window nearest the top of *WINDOW-STACK* which touches X,Y.
 
     X, Y = Coordinates of a point on the screen (root console).
@@ -134,7 +135,7 @@ class MouseEvent(Event):
 
 def destroy_all_windows():
     """Destroy all existing window objects."""
-    for win in WindowStack:
+    for win in WINDOW_STACK:
         win.destroy()
 
 class Window(Console):
@@ -206,18 +207,18 @@ class Window(Console):
         """Destroy the window object, hiding it first if it is not already
         hidden.
         """
-        if self in WindowStack:
+        if self in WINDOW_STACK:
             self.hide()
         self.parent.children.remove(self)
         if len(self.children) > 0:
             for child in self.children:
                 child.destroy()
-        HiddenWindowStack.remove(self)
+        HIDDEN_WINDOW_STACK.remove(self)
         self.alive_p = False
 
     def _touch_windows(self):
         """Make window refresh it's list of windows it is currently touching/overlapping."""
-        touching = [win for win in WindowStack if not (win is self) and self.touching(win)]
+        touching = [win for win in WINDOW_STACK if not (win is self) and self.touching(win)]
         for win in touching:
             if win not in self.touching:
                 self.touching.append(win)
@@ -251,12 +252,12 @@ class Window(Console):
 
     def windows_below(self):
         """Return windows (if any) below current window in the window stack."""
-        return WindowStack[WindowStack.index(self):]
+        return WINDOW_STACK[WINDOW_STACK.index(self):]
         
 
     def windows_above(self):
         """Return windows (if any) above current window in the stack."""
-        return WindowStack[:WindowStack.index(self)]
+        return WINDOW_STACK[:WINDOW_STACK.index(self)]
 
     def windows_overlying(self):
         """List windows that both overlap current window and are above it in the window stack.
@@ -291,7 +292,7 @@ class Window(Console):
 
     def prepare(self):
         if self.framed_p:
-            if WindowStack[0] is self:
+            if WINDOW_STACK[0] is self:
                 self.print_double_frame(0, 0, self.width, self.height, True,
                                         tcod.BKGND_SET, self.title if
                                         self.title else 0)

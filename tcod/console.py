@@ -183,7 +183,7 @@ class RootConsole(Console):
             warn('Root console already initialized. Any parameters supplied with call are being ignored.')
         else:
             if os.path.exists(font_file):
-                tcod.console_set_custom_font(font_file, tcod.FONT_LAYOUT_TCOD |
+                tcod.console_set_custom_font(bytes(font_file, 'utf-8'), tcod.FONT_LAYOUT_TCOD |
                                              tcod.FONT_TYPE_GREYSCALE)
             else:
                 raise OSError("Font file {0} not found.".format(font_file))
