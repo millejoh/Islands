@@ -846,6 +846,10 @@ def console_vline(con, x, y, l, flag=BKGND_DEFAULT):
 def console_print_frame(con, x, y, w, h, clear=True, flag=BKGND_DEFAULT, fmt=0):
     _lib.TCOD_console_print_frame(c_void_p(con), x, y, w, h, c_int(clear), flag, c_char_p(fmt))
 
+def console_print_double_frame(con, x, y, w, h, clear=True, flag=BKGND_DEFAULT, fmt=0):
+    _lib.TCOD_console_print_double_frame(c_void_p(con), x, y, w, h, c_int(clear), flag, c_char_p(fmt))
+
+
 def console_set_color_control(con,fore,back) :
     _lib.TCOD_console_set_color_control(con,fore,back)
 

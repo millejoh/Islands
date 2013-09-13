@@ -139,7 +139,7 @@ def destroy_all_windows():
         win.destroy()
 
 class Window(Console):
-    def __init__(self, tlx, tly, width, height, parent=None):
+    def __init__(self, tlx, tly, width, height, hidden=False, parent=None):
         super().__init__(width, height)
         self.tlx = tlx
         self.tly = tly
@@ -162,7 +162,7 @@ class Window(Console):
         self.title = ""
         self.transparency = 0
         self.transparency_unfocused = 100
-        self.hidden_p = False
+        self.hidden_p = hidden
         self.changed_p = False
         self.last_update_time = 0
         self.alive_p = True
@@ -170,14 +170,19 @@ class Window(Console):
         if parent:
             self.parent = parent
             self.parent.children.append(self)
+        if self.hidden_p:
+            HIDDEN_WINDOW_STACK.insert(0, self)
+        else:
+            self._touch_windows()
+            WINDOW_STACK.insert(0, self)
 
     def process_window(self):
         if self.hidden_p:
             return
         if (self.changed_p and self.auto_redraw_p) or \
-           (self.auto_redraw_time and 
-            tcod.sys_elapsed_milli() > (self.auto_redraw_time +
-                                        self.last_update_time)):
+            (self.auto_redraw_time and
+             tcod.sys_elapsed_milli() > (self.auto_redraw_time +
+                                         self.last_update_time)):
             self.prepare()
             self.redraw_window_area(draw_window=True)
             self.dirty_window()
@@ -306,6 +311,7 @@ class Window(Console):
                 self[self.width-1, self.height-1]= 29
         else:
             self.draw_rect(0, 0, self.width, self.height, True, tcod.BKGND_SET)
+
 
 class GhostWindow(Window):
     """Window that cannot be interacted with. Athough it may be raised to the top of

@@ -145,6 +145,7 @@ class Console(object):
         """Draw a rectangle with size `width` and `height` located at position (
 
         """
+        tcod.console_print_frame(self._c, x, y, width, height, clear, flag, fmt)
         pass
 
     def blit(self, dest, sx, sy, width, height, dx, dy, fore_alpha, back_alpha):
