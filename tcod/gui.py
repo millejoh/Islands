@@ -11,7 +11,7 @@ OPAQUE = 0
 INVISIBLE = 100
 DIMMED = 75 # Common values for window_transparency
 BOLD_FACTOR = 1.4 # Multiplier for producing a "bold" version of a color.
-mouse_x, mouse_y = 0, 0
+MOUSE_X, MOUSE_Y = 0, 0
 
 WINDOW_STACK = []
 HIDDEN_WINDOW_STACK = []
@@ -111,8 +111,23 @@ def top_window_at(x, y, stack=WINDOW_STACK, override_modal=False):
     else:
         [win for win in windows if (win.touches_spot_p(x, y) and not type(win) is GhostWindow)]
 
-#def window_with_mouse_focus():
-    
+def window_with_mouse_focus():
+    """Return the topmost window under the mouse pointer."""
+    return top_window_at(MOUSE_X, MOUSE_Y)
+
+def window_with_key_focus():
+    """Return the window where keyboard events will/are sent to."""
+    if WINDOW_STACK[0].is_modal:
+        return WINDOW_STACK[0]
+    else:
+        return window_with_mouse_focus()
+
+def windows_at(x, y):
+    """All windows that overlie the point at (x, y).
+    """
+    x, y = translate_negative_coords(x, y)
+    return [win for win in WINDOW_STACK if win.touches_spot(x, y)]
+
 # ======================== #
 
 class Event(object):
@@ -145,6 +160,7 @@ class Window(Console):
         self.tly = tly
         self.brx = tlx + width
         self.bry = tly + height
+        self.is_modal =False
         self.foreground_highlight = tcod.white
         self.background_highlight = tcod.black
         self.children = []
@@ -160,7 +176,7 @@ class Window(Console):
         self.draw_function = None
         self.event_handler= None
         self.title = ""
-        self.transparency = 0
+        self.transparency = 1
         self.transparency_unfocused = 100
         self.hidden_p = hidden
         self.changed_p = False
@@ -176,6 +192,14 @@ class Window(Console):
             self._touch_windows()
             WINDOW_STACK.insert(0, self)
 
+    @property
+    def brx(self):
+        return self.tlx + (self.width-1)
+
+    @property
+    def bry(self):
+        return self.tly + (self.height-1)
+    
     def process_window(self):
         if self.hidden_p:
             return
@@ -223,7 +247,7 @@ class Window(Console):
 
     def _touch_windows(self):
         """Make window refresh it's list of windows it is currently touching/overlapping."""
-        touching = [win for win in WINDOW_STACK if not (win is self) and self.touching(win)]
+        touching = [win for win in WINDOW_STACK if not (win is self) and self.is_touching(win)]
         for win in touching:
             if win not in self.touching:
                 self.touching.append(win)
@@ -245,12 +269,12 @@ class Window(Console):
         self.tly = tly
         self._touch_windows()
 
-    def touches_spot_p(self, x, y):
+    def touches_spot(self, x, y):
         """True if any part of the window covers or touches the point at (x, y)."""
         x, y = translate_negative_coords(x, y)
         return (self.tlx <= x <= self.brx) and (self.tly <= y <= self.bry)
 
-    def touching_p(self, win):
+    def is_touching(self, win):
         """True if window is touching or overlapping <win>."""
         return rectangle_overlaps_p( (self.tlx, self.tly, self.brx, self.bry),
                                      (win.tlx, win.tly, win.brx, win.bry) )
@@ -312,7 +336,14 @@ class Window(Console):
         else:
             self.draw_rect(0, 0, self.width, self.height, True, tcod.BKGND_SET)
 
+    def resize(self, new_width, new_height):
+        self._untouch_windows()
+        self._c = tcod.console_new(new_width, new_height)
+        self.width = new_width
+        self.height = new_height
+        self._touch_windows()
 
+        
 class GhostWindow(Window):
     """Window that cannot be interacted with. Athough it may be raised to the top of
     the window stack, it cannot receive any messages from the mouse or
