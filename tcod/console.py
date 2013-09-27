@@ -1,6 +1,7 @@
 
 import os.path
 from warnings import warn
+from threading import Thread
 import tcod
 
 # Make a subclass of Tuple?
@@ -108,6 +109,11 @@ class Console(object):
     def put_cell(self, x, y, sym, flag=tcod.BKGND_NONE):
         tcod.console_put_char(self._c, x, y, sym, flag)
 
+    def fill_char(self, char, tlx, tly, brx, bry):
+        for x in range(tlx, brx):
+            for y in range(tly, bry):
+                self[x,y] = char
+
     def write(self, x, y, fmt):
         tcod.console_print(self._c, x, y, fmt)
 
@@ -160,7 +166,7 @@ class Console(object):
                           fore_alpha, back_alpha)
 
 
-class RootConsole(Console):
+class RootConsole(Thread, Console):
     active_root = None
     mouse_x = 0
     mouse_y = 0
@@ -180,28 +186,23 @@ class RootConsole(Console):
             return -1
         
     def __init__(self, width=80, height=50, title=b'Stage', background = tcod.darker_sepia, font_file=tcod.default_font, datax='', fullscreen=False, renderer=tcod.RENDERER_GLSL, max_fps=30):
-        if RootConsole.active_root:
-            warn('Root console already initialized. Any parameters supplied with call are being ignored.')
+        super().__init__()
+        if os.path.exists(font_file):
+            tcod.console_set_custom_font(bytes(font_file, 'utf-8'),
+                                         tcod.FONT_LAYOUT_TCOD |
+                                         tcod.FONT_TYPE_GREYSCALE)
         else:
-            if os.path.exists(font_file):
-                tcod.console_set_custom_font(bytes(font_file, 'utf-8'), tcod.FONT_LAYOUT_TCOD |
-                                             tcod.FONT_TYPE_GREYSCALE)
-            else:
-                raise OSError("Font file {0} not found.".format(font_file))
+            raise OSError("Font file {0} not found.".format(font_file))
 
-            tcod.console_init_root(width, height, title,
-                                   fullscreen, renderer)
-            tcod.sys_set_fps(max_fps)
-            self._c = tcod.root_console
-            self.width = width
-            self.height = height
-            self.title = title
-            self.fullscreen = fullscreen
-            self.renderer = renderer
-            self.end_game = False
-            self.max_fps = max_fps
-            self.background = background
-            RootConsole.active_root = self
+        self._c = tcod.root_console
+        self.width = width
+        self.height = height
+        self.title = title
+        self.fullscreen = fullscreen
+        self.renderer = renderer
+        self.end_game = False
+        self.max_fps = max_fps
+        self.background = background
 
     def flush(self):
         tcod.console_flush()
@@ -212,19 +213,22 @@ class RootConsole(Console):
         return key, mouse
     
     def run(self):
-
+        tcod.console_init_root(self.width, self.height, self.title,
+                               self.fullscreen, self.renderer)
+        tcod.sys_set_fps(self.max_fps)
+        RootConsole.active_root = self
+        tcod.gui.redraw_all_windows()
+        
         while (not self.end_game) and (not tcod.console_is_window_closed()):
             key, mouse = self.handle_events()
-            self.handle_keys(key)
+            #self.handle_keys(key)
             if key.vk == tcod.KEY_ESCAPE:
                 tcod.console_clear(tcod.root_console)
                 tcod.console_print(tcod.root_console, 0, 0, "Exiting...")
                 tcod.console_flush()
                 break
-            tcod.console_clear(tcod.root_console)
-            tcod.console_print(tcod.root_console, 0, 0, "Current key pressed is {0}.".format(key.vk))
-            tcod.console_print(tcod.root_console, 0, 1, "Cursor at ({0}, {1}).".format(mouse.cx, mouse.cy))
-            tcod.console_flush()
+            tcod.gui.gui_loop(key,mouse)
+
 
 
 

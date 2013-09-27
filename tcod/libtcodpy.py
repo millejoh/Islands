@@ -981,6 +981,9 @@ def console_load_apf(con, filename) :
 def console_save_apf(con, filename) :
     _lib.TCOD_console_save_apf(con,filename)
 
+def console_set_dirty(tlx, tly, brx, bry):
+    _lib.TCOD_console_set_dirty(tlx, tly, brx, bry)
+
 ############################
 # sys module
 ############################
