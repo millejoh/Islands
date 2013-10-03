@@ -7,15 +7,19 @@ to learn a language (and library) to me.
 import tcod
 from tcod.console import Console, RootConsole
 
+AUTO_REDRAW = True
 OPAQUE = 0
 INVISIBLE = 100
 DIMMED = 75 # Common values for window_transparency
 BOLD_FACTOR = 1.4 # Multiplier for producing a "bold" version of a color.
+CURRENT_MOUSE_EVENT = None
 MOUSE_X, MOUSE_Y = 0, 0
 FOCUS_CHANGED = False # Transiently set to true when a window has taken over focus
 WINDOW_STACK = []
 HIDDEN_WINDOW_STACK = []
 FOCUS_FADE_MODE = 'together'
+TOPWIN = None
+LAST_TOPWIN = None
 
 def clamp(low, high, expr):
     """Return the numeric value of EXPR, constrained to the range [MIN ... MAX]."""
@@ -115,15 +119,18 @@ def top_window_at(x, y, stack=WINDOW_STACK, override_modal=False):
     is returned.
 
     """
-    x, y = translate_negative_coords(x, y)
-    top = stack[0]
-    if not override_modal and top.is_modal:
-        if top.touches_spot(x, y):
-            return top
-        else:
-            return None
+    if len(stack) == 0:
+        return None
     else:
-        [win for win in stack if (win.touches_spot(x, y) and not type(win) is GhostWindow)]
+        x, y = translate_negative_coords(x, y)
+        top = stack[0]
+        if not override_modal and top.is_modal:
+            if top.touches_spot(x, y):
+                return top
+            else:
+                return None
+        else:
+            [win for win in stack if (win.touches_spot(x, y) and not type(win) is GhostWindow)]
 
 def window_with_mouse_focus():
     """Return the topmost window under the mouse pointer."""
@@ -169,34 +176,44 @@ def fade_for_window(win):
     else:
         return transparency_to_fade(win.transparency_unfocused)
         
+def send_mouse_move_event(event):
+    pass
 
-def gui_loop(key, mouse):
-    tcod.console_clear(tcod.root_console)
-    tcod.console_print(tcod.root_console, 0, 0, "Current key pressed is {0}.".format(key.vk))
-    tcod.console_print(tcod.root_console, 0, 1, "Cursor at ({0}, {1}).".format(mouse.cx, mouse.cy))
+def send_mouse_click_event(event):
+    pass
+
+def send_key_to_window(window, key, x, y):
+    pass
+
+def gui_loop(events):
+    # Go through any (all) events in the queue
+    CURRENT_MOUSE_EVENT = tcod.mouse_get_status()
+    for (event_type, event) in events:
+        if isinstance(event, tcod.Mouse):
+            CURRENT_MOUSE_EVENT = event
+            MOUSE_X, MOUSE_Y = event.x, event.y
+            if event_type == tcod.EVENT_MOUSE_MOVE:
+                FOCUS_CHANGED = window_with_mouse_focus() != LAST_TOPWIN
+                send_mouse_move_event(event)
+            elif event_type is (tcod.EVENT_MOUSE_PRESS, tcod.EVENT_MOUSE_RELEASE):
+                TOPWIN = window_with_key_focus()
+                FOCUS_CHANGED = TOPWIN != LAST_TOPWIN
+                send_mouse_click_event(event)
+        if isinstance(event, tcod.Key):
+            TOPWIN = window_with_key_focus()
+            if TOPWIN:
+                send_key_to_window(TOPWIN, key, 
+                                   MOUSE_X - TOPWIN.tlx,
+                                   MOUSE_Y - TOPWIN.tly)
+    # That's done, now look at the state of the mouse
+    if CURRENT_MOUSE_EVENT and CURRENT_MOUSE_EVENT.lbutton_pressed and \
+       TOPWIN and not TOPWIN.hidden_p:
+        TOPWIN.raise_window()
+        
     tcod.console_print(tcod.root_console, 0, 2, "FPS = {0}".format(tcod.sys_get_fps()))
     process_windows()
-    tcod.console_flush()
 
 # ======================== #
-
-class Event(object):
-    def __init__(self):
-        self.window = None
-        self.winx = 0
-        self.winy = 0
-        self.time = 0
-
-    def __repr__(self):
-        return 'Event({0}) at ({1}, {2})'.format(self.type,
-                                                 self.winx, self.winy)
-class KeyEvent(Event):
-    def __init__(self):
-        self.keypress = None
-
-class MouseEvent(Event):
-    def __init__(self):
-        self.state = None
 
 def destroy_all_windows():
     """Destroy all existing window objects."""
@@ -262,6 +279,42 @@ class Window(Console):
             self.last_update_time = tcod.sys_elapsed_milli()
         elif FOCUS_CHANGED:
             self.redraw_window_area(draw_window=True)
+
+    def raise_window(self, redraw=AUTO_REDRAW, simple_redraw=False, **keys):
+        """
+        """
+        assert not self.hidden_p
+        if self.changed_p:
+            self.prepare()
+        WINDOW_STACK.remove(self)
+        WINDOW_STACK.insert(self, 0)
+        self.window_did_change()
+        self.dirty_window()
+        for child in self.children:
+            if self.raise_children_with_parent_p and not child.hidden_p:
+                child.raise_window(redraw=redraw, simple_redraw=simple_redraw)
+        if redraw:
+            if simple_redraw:
+                self.copy_to_console(RootConsole.active_root)
+            else:
+                self.redraw_area()
+
+    def hide(self, redraw=AUTO_REDRAW):
+        """
+        """
+        if redraw:
+            self.redraw_area(draw_window=False)
+        self._untouch_windows()
+        WINDOW_STACK.remove(self)
+        if self.raise_children_with_parent_p and self.children:
+            for win in self.children:
+                win.hide()
+        if self.ephemeral_p:
+            self.destroy()
+        else:
+            self.hidden_p = True
+            if self not in HIDDEN_WINDOW_STACK:
+                HIDDEN_WINDOW_STACK.insert(self, 0)
 
     def window_did_change(self):
         self.changed_p = True

@@ -4,6 +4,21 @@ from warnings import warn
 from threading import Thread
 import tcod
 
+def sys_get_events():
+    mouse = tcod.Mouse()
+    key = tcod.Key()
+    events = []
+    while 1:
+        event = tcod.sys_check_for_event(tcod.EVENT_ANY, key, mouse)
+        if event == tcod.EVENT_NONE:
+            break
+        elif event == tcod.EVENT_KEY_PRESS or event == tcod.EVENT_KEY_RELEASE:
+            events.append((event, key))
+        elif event in (tcod.EVENT_MOUSE_MOVE, tcod.EVENT_MOUSE_PRESS, tcod.EVENT_MOUSE_RELEASE):
+            events.append((event, mouse))
+    return events
+        
+        
 # Make a subclass of Tuple?
 class ConsoleCell(object):
     """Represent a console cell as a 3-element tuple: symbol (or character), foreground color,
@@ -207,45 +222,18 @@ class RootConsole(Thread, Console):
     def flush(self):
         tcod.console_flush()
 
-    def handle_events(self):
-        mouse, key = tcod.Mouse(), tcod.Key()
-        tcod.sys_check_for_event(tcod.EVENT_ANY, key, mouse)
-        return key, mouse
-    
     def run(self):
+        RootConsole.active_root = self
         tcod.console_init_root(self.width, self.height, self.title,
                                self.fullscreen, self.renderer)
         tcod.sys_set_fps(self.max_fps)
-        RootConsole.active_root = self
         tcod.gui.redraw_all_windows()
         
         while (not self.end_game) and (not tcod.console_is_window_closed()):
-            key, mouse = self.handle_events()
+            events = sys_get_events()
             #self.handle_keys(key)
-            if key.vk == tcod.KEY_ESCAPE:
-                tcod.console_clear(tcod.root_console)
-                tcod.console_print(tcod.root_console, 0, 0, "Exiting...")
-                tcod.console_flush()
-                break
-            tcod.gui.gui_loop(key,mouse)
-
-
-
-
-def gui_loop():
-    credits_end = False
-    key = tcod.Key()
-    mouse = tcod.Mouse()
-
-    while not tcod.console_is_window_closed():
-        tcod.sys_check_for_event(tcod.EVENT_KEY_PRESS | tcod.EVENT_MOUSE, key, mouse)
-        tcod.console_set_default_foreground(0, tcod.white)
-        if not credits_end:
-            credits_end = tcod.console_credits_render(60, 43, 0)
-        
-        tcod.console_print(0, 0, 1, "Key pressed:{0!a}".format(key.c))
-        tcod.console_flush()
-
-        
-
+            tcod.console_clear(tcod.root_console)
+            tcod.console_print(tcod.root_console, 0, 0, "Event(s) {0} detected.".format(events))
+            tcod.gui.gui_loop(events)
+            tcod.console_flush()
 
