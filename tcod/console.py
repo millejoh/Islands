@@ -1,8 +1,9 @@
 
 import os.path
-from warnings import warn
 from threading import Thread
 import tcod
+
+
 
 def sys_get_events():
     mouse = tcod.Mouse()
@@ -111,7 +112,7 @@ class Console(object):
 
     @property
     def background_flag(self):
-        tcod.console_get_background_flag(self._c)
+        return tcod.console_get_background_flag(self._c)
 
     @background_flag.setter
     def background_flag(self, flag):

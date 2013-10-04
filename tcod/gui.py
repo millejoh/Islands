@@ -4,8 +4,9 @@ One might even go so far as to say "stolen from." Seems like a good way
 to learn a language (and library) to me.
 """
 
+
+import tcod.console as tc
 import tcod
-from tcod.console import Console, RootConsole
 
 AUTO_REDRAW = True
 OPAQUE = 0
@@ -26,9 +27,9 @@ def clamp(low, high, expr):
     return min((high, max((low, expr))))
 
 def translate_negative_coords(x, y, window = None):
-    assert RootConsole.screen_width() > 0
-    screen_w = RootConsole.screen_width()
-    screen_h = RootConsole.screen_height()
+    assert tc.RootConsole.screen_width() > 0
+    screen_w = tc.RootConsole.screen_width()
+    screen_h = tc.RootConsole.screen_height()
     
     if x in ['center', 'centered', 'centre', 'centred']:
         if window:
@@ -70,7 +71,7 @@ def screen_to_win_coord(window, coord):
     return win_x, win_y
 
 def rectangle_overlaps_p(rect1, rect2):
-    """Do the two rectanges <rect1> and <rect2> overlap?
+    """Do the two rectangles <rect1> and <rect2> overlap?
 
     rect1 = Tuple (tlx, tly, brx, bry) specifying the top left and bottom
             right corners of the first area.
@@ -94,14 +95,14 @@ def redraw_all_windows(exclude=[]):
 
     exclude = list of window instances to exclude, defaults to None."""
     windows = [win for win in WINDOW_STACK if win not in exclude]
-    RootConsole.active_root.clear()
+    tc.RootConsole.active_root.clear()
     if windows:
         for win in windows.reverse():
             win.prepare()
-            win.copy_to_console(RootConsole.active_root)
+            win.copy_to_console(tc.RootConsole.active_root)
         tcod.console_set_dirty( 0, 0, 
-                                RootConsole.screen_width(),
-                                RootConsole.screen_height() )
+                                tc.RootConsole.screen_width(),
+                                tc.RootConsole.screen_height() )
 
 def top_window_at(x, y, stack=WINDOW_STACK, override_modal=False):
     """Return the window nearest the top of *WINDOW-STACK* which touches X,Y.
@@ -130,7 +131,7 @@ def top_window_at(x, y, stack=WINDOW_STACK, override_modal=False):
             else:
                 return None
         else:
-            [win for win in stack if (win.touches_spot(x, y) and not type(win) is GhostWindow)]
+            return [win for win in stack if (win.touches_spot(x, y) and not type(win) is GhostWindow)]
 
 def window_with_mouse_focus():
     """Return the topmost window under the mouse pointer."""
@@ -152,7 +153,9 @@ def windows_at(x, y):
     x, y = translate_negative_coords(x, y)
     return [win for win in WINDOW_STACK if win.touches_spot(x, y)]
 
-def all_windows(exclude=[]):
+def all_windows(exclude=None):
+    if exclude is None:
+        exclude = []
     return [w for w in WINDOW_STACK+HIDDEN_WINDOW_STACK if w not in exclude]
 
 def process_windows():
@@ -160,7 +163,7 @@ def process_windows():
     part of main event loop."""
     windows = all_windows()
     if windows:
-        for win in windows:
+        for win in windows.reverse():
             win.process_window()
 
 
@@ -186,12 +189,13 @@ def send_key_to_window(window, key, x, y):
     pass
 
 def gui_loop(events):
+    global CURRENT_MOUSE_EVENT, MOUSE_X, MOUSE_Y, TOPWIN, LAST_TOPWIN, FOCUS_CHANGED
     # Go through any (all) events in the queue
     CURRENT_MOUSE_EVENT = tcod.mouse_get_status()
     for (event_type, event) in events:
         if isinstance(event, tcod.Mouse):
             CURRENT_MOUSE_EVENT = event
-            MOUSE_X, MOUSE_Y = event.x, event.y
+            MOUSE_X, MOUSE_Y = event.cx, event.cy
             if event_type == tcod.EVENT_MOUSE_MOVE:
                 FOCUS_CHANGED = window_with_mouse_focus() != LAST_TOPWIN
                 send_mouse_move_event(event)
@@ -202,14 +206,15 @@ def gui_loop(events):
         if isinstance(event, tcod.Key):
             TOPWIN = window_with_key_focus()
             if TOPWIN:
-                send_key_to_window(TOPWIN, key, 
+                send_key_to_window(TOPWIN, event,
                                    MOUSE_X - TOPWIN.tlx,
                                    MOUSE_Y - TOPWIN.tly)
     # That's done, now look at the state of the mouse
     if CURRENT_MOUSE_EVENT and CURRENT_MOUSE_EVENT.lbutton_pressed and \
        TOPWIN and not TOPWIN.hidden_p:
         TOPWIN.raise_window()
-        
+
+    tcod.console_print(tcod.root_console, 0, 1, "Mouse position = ({0}, {1})".format(MOUSE_X, MOUSE_Y))
     tcod.console_print(tcod.root_console, 0, 2, "FPS = {0}".format(tcod.sys_get_fps()))
     process_windows()
 
@@ -220,8 +225,8 @@ def destroy_all_windows():
     for win in WINDOW_STACK:
         win.destroy()
 
-class Window(Console):
-    def __init__(self, tlx, tly, width, height, hidden=False, parent=None, title=""):
+class Window(tc.Console):
+    def __init__(self, tlx, tly, width, height, hidden=False, parent=None, title="", framed=False):
         super().__init__(width, height)
         self.tlx = tlx
         self.tly = tly
@@ -232,7 +237,7 @@ class Window(Console):
         self.raise_children_with_parent_p = True
         self.auto_redraw_p = False
         self.auto_redraw_time = 10
-        self.framed_p = False
+        self.framed_p = framed
         self.can_resize_p = True
         self.can_drag_p = True
         self.can_close_p = True
@@ -257,6 +262,9 @@ class Window(Console):
             self._touch_windows()
             WINDOW_STACK.insert(0, self)
 
+    def __repr__(self):
+        return "Window({w.tlx},{w.tly},{w.width},{w.height},title='{w.title}')".format(w=self)
+
     @property
     def brx(self):
         return self.tlx + (self.width-1)
@@ -278,7 +286,7 @@ class Window(Console):
             self.changed_p = False
             self.last_update_time = tcod.sys_elapsed_milli()
         elif FOCUS_CHANGED:
-            self.redraw_window_area(draw_window=True)
+            self.redraw_area(draw_window=True)
 
     def raise_window(self, redraw=AUTO_REDRAW, simple_redraw=False, **keys):
         """
@@ -287,7 +295,7 @@ class Window(Console):
         if self.changed_p:
             self.prepare()
         WINDOW_STACK.remove(self)
-        WINDOW_STACK.insert(self, 0)
+        WINDOW_STACK.insert(0, self)
         self.window_did_change()
         self.dirty_window()
         for child in self.children:
@@ -295,7 +303,7 @@ class Window(Console):
                 child.raise_window(redraw=redraw, simple_redraw=simple_redraw)
         if redraw:
             if simple_redraw:
-                self.copy_to_console(RootConsole.active_root)
+                self.copy_to_console(tc.RootConsole.active_root)
             else:
                 self.redraw_area()
 
@@ -327,10 +335,10 @@ class Window(Console):
     def dirty_window(self):
         tlx, tly = self.tlx, self.tly
         w, h = self.width, self.height
-        tcod.console_set_dirty( clamp(0, (RootConsole.screen_width() - 1), tlx),
-                                clamp(0, (RootConsole.screen_height() - 1), tly),
-                                clamp(0, (RootConsole.screen_width() - tlx), w),
-                                clamp(0, (RootConsole.screen_height() - tly), w) )
+        tcod.console_set_dirty( clamp(0, (tc.RootConsole.screen_width() - 1), tlx),
+                                clamp(0, (tc.RootConsole.screen_height() - 1), tly),
+                                clamp(0, (tc.RootConsole.screen_width() - tlx), w),
+                                clamp(0, (tc.RootConsole.screen_height() - tly), w) )
 
     def destroy(self):
         """Destroy the window object, hiding it first if it is not already
@@ -412,12 +420,12 @@ class Window(Console):
 
     def redraw(self):
         """Update window onto the root console."""
-        self.copy_to_console(RootConsole.active_root)
+        self.copy_to_console(tc.RootConsole.active_root)
 
     def redraw_area(self, draw_window=True):
         if not draw_window:
-            RootConsole.active_root.background = tcod.black
-            RootConsole.active_root.draw_rect(self.tlx, self.tly, self.width, self.height, True, tcod.BKGND_SET)
+            tc.RootConsole.active_root.background = tcod.black
+            tc.RootConsole.active_root.draw_rect(self.tlx, self.tly, self.width, self.height, True, tcod.BKGND_SET)
         if draw_window and self.children:
             for win in self.children:
                 if not win.hidden_p:
@@ -446,9 +454,9 @@ class Window(Console):
         tly = max([self.tly, y1])
         brx = max([self.brx, x2])
         bry = max([self.bry, y2])
-        RootConsole.active_root.fill_char(' ', tlx, tly, brx-(tlx-1), bry-(tly-1))    
+        tc.RootConsole.active_root.fill_char(' ', tlx, tly, brx-(tlx-1), bry-(tly-1))
         winx, winy = screen_to_win_coord(self, (tlx, tly))
-        self.blit(RootConsole.active_root, winx, winy, (brx-tlx), (bry-tly), tlx, tly,
+        self.blit(tc.RootConsole.active_root, winx, winy, (brx-tlx), (bry-tly), tlx, tly,
                   (fade or transparency_to_fade(self.transparency)),
                   (fade or transparency_to_fade(self.transparency)))
 
@@ -478,7 +486,7 @@ class Window(Console):
 
         
 class GhostWindow(Window):
-    """Window that cannot be interacted with. Athough it may be raised to the top of
+    """Window that cannot be interacted with. Although it may be raised to the top of
     the window stack, it cannot receive any messages from the mouse or
     keyboard. All such messages pass through to the window below it.
             
