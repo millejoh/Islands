@@ -181,9 +181,15 @@ class Console(object):
         tcod.console_blit(self._c, sx, sy, width, height, dest._c, dx, dy,
                           fore_alpha, back_alpha)
 
+    def copy_to_console(self, console):
+        """Copy entire contents to another console.
+        """
+        self.blit(console, 0, 0, self.width, self.height, 0, 0, 1.0, 1.0)
 
 class RootConsole(Thread, Console):
     active_root = None
+    scratch = None
+    temp_console = None
     mouse_x = 0
     mouse_y = 0
 
@@ -225,6 +231,9 @@ class RootConsole(Thread, Console):
 
     def run(self):
         RootConsole.active_root = self
+        RootConsole.scratch = Console(self.width, self.height)
+        RootConsole.temp_console = Console(self.width, self.height)
+
         tcod.console_init_root(self.width, self.height, self.title,
                                self.fullscreen, self.renderer)
         tcod.sys_set_fps(self.max_fps)
@@ -234,7 +243,7 @@ class RootConsole(Thread, Console):
             events = sys_get_events()
             #self.handle_keys(key)
             tcod.console_clear(tcod.root_console)
-            tcod.console_print(tcod.root_console, 0, 0, "Event(s) {0} detected.".format(events))
             tcod.gui.gui_loop(events)
             tcod.console_flush()
 
+R = RootConsole
