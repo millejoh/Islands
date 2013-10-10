@@ -22,7 +22,9 @@ HIDDEN_WINDOW_STACK = []
 FOCUS_FADE_MODE = 'together'
 TOPWIN = None
 LAST_TOPWIN = None
-DRAG_DELAY = 0.1 # Drag delay time in seconds
+DRAG_DELAY = 0.05 # Drag delay time in seconds
+LAST_MOUSE_CLICK = None
+DOUBLE_CLICK_SPEED = 1000 # Double click speed in milliseconds
 
 def clamp(low, high, expr):
     """Return the numeric value of EXPR, constrained to the range [MIN ... MAX]."""
@@ -189,8 +191,29 @@ def fade_for_window(win):
 def send_mouse_move_event(event):
     pass
 
+def mouse_click_type(mouse_event):
+    if mouse_event.lbutton:
+        return 'lclick'
+    elif mouse_event.rbutton:
+        return 'rclick'
+    elif mouse_event.mbutton:
+        return 'mclick'
+    else:
+        return None
+
 def send_mouse_click_event(event):
-    pass
+    global LAST_MOUSE_CLICK
+    double_click = False
+    if TOPWIN:
+        if event.lbutton and event.cy == TOPWIN.tly and event.cx == TOPWIN.brx \
+           and TOPWIN.can_close_p:
+            TOPWIN.hide()
+        elif LAST_MOUSE_CLICK and mouse_click_type(event) == mouse_click_type(LAST_MOUSE_CLICK.state) and \
+             (tcod.sys_elapsed_milli() - LAST_MOUSE_CLICK.time) < DOUBLE_CLICK_SPEED:
+            double_click = True
+        LAST_MOUSE_CLICK = MouseEvent(winx=event.cx-TOPWIN.tlx, winy=event.cy-TOPWIN.tly,
+                                      mouse_state=event, window=TOPWIN, double_click=double_click)
+        TOPWIN.send_to_window(LAST_MOUSE_CLICK)
 
 def send_key_to_window(window, key, x, y):
     pass
@@ -205,7 +228,6 @@ def handle_drag_event(mouse):
     while mouse.lbutton:
         tcod.sys_check_for_event(tcod.EVENT_MOUSE, key, mouse)
         mouse.dx, mouse.dy = ox-mouse.cx, oy-mouse.cy
-        #mouse = tcod.mouse_get_status()
         if (tcod.sys_elapsed_milli() > (DRAG_DELAY*1000 + start)) and \
            (mouse.dx != 0 or mouse.dy != 0):
             dragged = True
@@ -214,8 +236,8 @@ def handle_drag_event(mouse):
                 TOPWIN.mouse_drag(mouse)
             # Are we dragging on the bottom right corner (resize!)?
             elif TOPWIN.can_resize_p and \
-                 mouse.cx == (TOPWIN.tly + TOPWIN.height-1) and \
-                 mouse.cy == (TOPWIN.tlx + TOPWIN.width-1):
+                 ox == (TOPWIN.tlx + TOPWIN.width-1) and \
+                 oy == (TOPWIN.tly + TOPWIN.height-1):
                 TOPWIN.mouse_resize(mouse)
             else:
                 TOPWIN.send_to_window(MouseDragEvent(winx=mouse.cx-TOPWIN.tlx,
@@ -242,9 +264,7 @@ def gui_loop(events):
         if isinstance(event, tcod.Key):
             TOPWIN = window_with_key_focus()
             if TOPWIN:
-                send_key_to_window(TOPWIN, event,
-                                   MOUSE_X - TOPWIN.tlx,
-                                   MOUSE_Y - TOPWIN.tly)
+                send_key_to_window(TOPWIN, event, MOUSE_X - TOPWIN.tlx, MOUSE_Y - TOPWIN.tly)
     # That's done, now look at the state of the mouse
     if CURRENT_MOUSE_EVENT and CURRENT_MOUSE_EVENT.lbutton and \
        TOPWIN and not TOPWIN.hidden_p:
@@ -364,7 +384,7 @@ class Window(tc.Console):
         else:
             self.hidden_p = True
             if self not in HIDDEN_WINDOW_STACK:
-                HIDDEN_WINDOW_STACK.insert(self, 0)
+                HIDDEN_WINDOW_STACK.insert(0, self)
 
     def window_did_change(self):
         self.changed_p = True
@@ -536,6 +556,9 @@ class Window(tc.Console):
         tlx, tly = 0, 0
         swidth = tc.R.screen_width()
         sheight = tc.R.screen_height()
+        tc.R.scratch.clear()
+        tc.R.temp_console.clear()
+
         self.raise_window()
         copy_windows_to_console([win for win in WINDOW_STACK if win is not self], tc.R.scratch)
         tc.R.scratch.blit(tc.R.temp_console, self.tlx, self.tly, self.width, self.height, 0, 0, 1.0, 1.0)
@@ -557,11 +580,37 @@ class Window(tc.Console):
                 # Copy win to root
                 self.copy_to_console(root)
             root.flush()
-        tc.R.scratch.clear()
-        tc.R.temp_console.clear()
 
-    def mouse_resize(self, event):
-        pass
+    def mouse_resize(self, mouse):
+        brx, bry = 0, 0
+        root = tc.R.active_root
+
+        self.raise_window()
+        copy_windows_to_console([win for win in WINDOW_STACK if win is not self], tc.R.scratch)
+        tc.R.scratch.blit(tc.R.temp_console, self.tlx, self.tly, self.width, self.height, 0, 0, 1.0, 1.0)
+        tc.R.scratch.copy_to_console(root) # copy-console-to-console
+        self.copy_to_console(root) # copy-window-to-console
+        root.flush()
+        key = tcod.Key()
+        while mouse.lbutton:
+            tcod.sys_check_for_event(tcod.EVENT_MOUSE, key, mouse)
+            brx = clamp(self.tlx, tc.R.screen_width()-1, mouse.cx)
+            bry = clamp(self.tly, tc.R.screen_height()-1, mouse.cy)
+            if not (brx == self.brx and bry == self.bry):
+                # Erase window
+                tc.R.temp_console.blit(root, 0, 0, self.width, self.height,
+                                       self.tlx, self.tly, 1.0, 1.0)
+                self.resize(brx-self.tlx, bry-self.tly)
+                self.prepare()
+                # Save part of root console that win is covering
+                tc.R.scratch.blit(tc.R.temp_console, self.tlx, self.tly, self.width, self.height, 
+                                  0, 0, 1.0, 1.0)
+                # Copy win to root
+                self.copy_to_console(root)
+            tcod.console_print(0, 0, 0, "Br(x,y) = ({0}, {1})".format(brx,bry))
+            root.flush()
+                
+        
 
 class GhostWindow(Window):
     """Window that cannot be interacted with. Although it may be raised to the top of
