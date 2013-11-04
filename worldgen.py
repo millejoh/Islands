@@ -233,7 +233,7 @@ class WorldGenerator(object):
                 self._clouds[x,y] = 0.5 * (1.0 + 0.8*tcod.noise_get_fbm(self.noise, f, 4.0, tcod.NOISE_SIMPLEX))
                 
     def smooth_map(self):
-	# 3x3 kernel for smoothing operations
+    # 3x3 kernel for smoothing operations
         smooth_ks = 9
         smooth_dx = [-1, 0, 1, -1, 0, 1, -1, 0, 1]
         smooth_dy = [-1, -1, -1, 0, 0, 0, 1, 1, 1]

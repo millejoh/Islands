@@ -213,8 +213,8 @@ def send_mouse_click_event(event):
             double_click = True
         LAST_MOUSE_CLICK = MouseEvent(winx=event.cx-TOPWIN.tlx, winy=event.cy-TOPWIN.tly,
                                       mouse_state=event, window=TOPWIN, double_click=double_click)
-        TOPWIN.send_to_window(LAST_MOUSE_CLICK)
-
+        TOPWIN.send_to_window(LAST_MOUSE_CLICK)/
+ ,kj  jki i
 def send_key_to_window(window, key, x, y):
     pass
 
@@ -239,7 +239,9 @@ def handle_drag_event(mouse):
                  ox == (TOPWIN.tlx + TOPWIN.width-1) and \
                  oy == (TOPWIN.tly + TOPWIN.height-1):
                 TOPWIN.mouse_resize(mouse)
-            else:
+            else:h 01hnjgh 1010n  01b7nhyv0000000000000000000000
+                .-9./ 1
+                87054712
                 TOPWIN.send_to_window(MouseDragEvent(winx=mouse.cx-TOPWIN.tlx,
                                                      winy=mouse.cy-TOPWIN.tly,
                                                      mouse_state=mouse))

@@ -1,32 +1,92 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-    <PropertyGroup>
-        <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
-        <SchemaVersion>2.0</SchemaVersion>
-        <ProjectGuid>{999ca7a6-1226-4d26-8f82-a21040c74143}</ProjectGuid>
-        <ProjectHome />
-        <StartupFile />
-        <SearchPath />
-        <WorkingDirectory>.</WorkingDirectory>
-        <OutputPath>.</OutputPath>
-        <VisualStudioVersion Condition="'$(VisualStudioVersion)' == ''">10.0</VisualStudioVersion>
-        <VSToolsPath Condition="'$(VSToolsPath)' == ''">$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)</VSToolsPath>
-    </PropertyGroup>
-    <PropertyGroup Condition="'$(Configuration)' == 'Debug'" />
-    <PropertyGroup Condition="'$(Configuration)' == 'Release'" />
-    <ItemGroup>
-        <Compile Include="events.py" />
-        <Compile Include="MapChunk.py" />
-        <Compile Include="worldgen.py" />
-        <Compile Include="tcod\console.py" />
-        <Compile Include="tcod\gui.py" />
-        <Compile Include="tcod\tools.py" />
-        <Compile Include="tcod\__init__.py" />
-        <Content Include="arial10x10.png" />
-        <Content Include="terminal8x8_aa_tc.png" />
-    </ItemGroup>
-    <ItemGroup>
-        <Folder Include="tcod" />
-    </ItemGroup>
-    <Import Project="$(MSBuildToolsPath)\Microsoft.Common.targets" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{2ffed22c-8e97-4627-b65a-d12ad6354d6d}</ProjectGuid>
+    <ProjectHome />
+    <StartupFile>main.py</StartupFile>
+    <SearchPath>tcod\</SearchPath>
+    <WorkingDirectory>.</WorkingDirectory>
+    <OutputPath>.</OutputPath>
+    <VisualStudioVersion Condition="'$(VisualStudioVersion)' == ''">10.0</VisualStudioVersion>
+    <VSToolsPath Condition="'$(VSToolsPath)' == ''">$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)</VSToolsPath>
+    <InterpreterId>{79d1aa8e-4c29-4164-bf34-be8a1b0d762e}</InterpreterId>
+    <InterpreterVersion>3.3</InterpreterVersion>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug'" />
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'" />
+  <ItemGroup>
+    <Compile Include="MapChunk.py" />
+    <Compile Include="main.py" />
+    <Compile Include="worldgen.py" />
+    <Compile Include="tcod\console.py" />
+    <Compile Include="tcod\cprotos.py" />
+    <Compile Include="tcod\events.py" />
+    <Compile Include="tcod\gui.py" />
+    <Compile Include="tcod\libtcodpy.py" />
+    <Compile Include="tcod\tools.py" />
+    <Compile Include="tcod\__init__.py" />
+    <Content Include="tcod\data\fonts\README.txt" />
+    <Content Include="tcod\data\namegen\README.txt" />
+    <Content Include="arial10x10.png" />
+    <Content Include="terminal8x8_aa_tc.png" />
+    <Content Include="tcod\data\fonts\arial10x10.png" />
+    <Content Include="tcod\data\fonts\arial12x12.png" />
+    <Content Include="tcod\data\fonts\arial8x8.png" />
+    <Content Include="tcod\data\fonts\caeldera8x8_gs_tc.png" />
+    <Content Include="tcod\data\fonts\celtic_garamond_10x10_gs_tc.png" />
+    <Content Include="tcod\data\fonts\consolas10x10_gs_tc.png" />
+    <Content Include="tcod\data\fonts\consolas12x12_gs_tc.png" />
+    <Content Include="tcod\data\fonts\consolas8x8_gs_tc.png" />
+    <Content Include="tcod\data\fonts\consolas_unicode_10x10.png" />
+    <Content Include="tcod\data\fonts\consolas_unicode_12x12.png" />
+    <Content Include="tcod\data\fonts\consolas_unicode_16x16.png" />
+    <Content Include="tcod\data\fonts\consolas_unicode_8x8.png" />
+    <Content Include="tcod\data\fonts\courier10x10_aa_tc.png" />
+    <Content Include="tcod\data\fonts\courier12x12_aa_tc.png" />
+    <Content Include="tcod\data\fonts\courier8x8_aa_tc.png" />
+    <Content Include="tcod\data\fonts\dejavu10x10_gs_tc.png" />
+    <Content Include="tcod\data\fonts\dejavu12x12_gs_tc.png" />
+    <Content Include="tcod\data\fonts\dejavu16x16_gs_tc.png" />
+    <Content Include="tcod\data\fonts\dejavu8x8_gs_tc.png" />
+    <Content Include="tcod\data\fonts\dejavu_wide12x12_gs_tc.png" />
+    <Content Include="tcod\data\fonts\dejavu_wide16x16_gs_tc.png" />
+    <Content Include="tcod\data\fonts\dundalk12x12_gs_tc.png" />
+    <Content Include="tcod\data\fonts\lucida10x10_gs_tc.png" />
+    <Content Include="tcod\data\fonts\lucida12x12_gs_tc.png" />
+    <Content Include="tcod\data\fonts\lucida8x8_gs_tc.png" />
+    <Content Include="tcod\data\fonts\prestige10x10_gs_tc.png" />
+    <Content Include="tcod\data\fonts\prestige12x12_gs_tc.png" />
+    <Content Include="tcod\data\fonts\prestige8x8_gs_tc.png" />
+    <Content Include="tcod\data\fonts\terminal10x10_gs_tc.png" />
+    <Content Include="tcod\data\fonts\terminal10x16_gs_ro.png" />
+    <Content Include="tcod\data\fonts\terminal10x16_gs_tc.png" />
+    <Content Include="tcod\data\fonts\terminal10x18_gs_ro.png" />
+    <Content Include="tcod\data\fonts\terminal12x12_gs_ro.png" />
+    <Content Include="tcod\data\fonts\terminal16x16_gs_ro.png" />
+    <Content Include="tcod\data\fonts\terminal7x7_gs_tc.png" />
+    <Content Include="tcod\data\fonts\terminal8x12_gs_ro.png" />
+    <Content Include="tcod\data\fonts\terminal8x12_gs_tc.png" />
+    <Content Include="tcod\data\fonts\terminal8x14_gs_ro.png" />
+    <Content Include="tcod\data\fonts\terminal8x8_aa_as.png" />
+    <Content Include="tcod\data\fonts\terminal8x8_aa_ro.png" />
+    <Content Include="tcod\data\fonts\terminal8x8_aa_tc.png" />
+    <Content Include="tcod\data\fonts\terminal8x8_gs_as.png" />
+    <Content Include="tcod\data\fonts\terminal8x8_gs_ro.png" />
+    <Content Include="tcod\data\fonts\terminal8x8_gs_tc.png" />
+    <Content Include="tcod\data\img\circle.png" />
+    <Content Include="tcod\data\img\skull.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="tcod" />
+    <Folder Include="tcod\data\" />
+    <Folder Include="tcod\data\fonts" />
+    <Folder Include="tcod\data\img" />
+    <Folder Include="tcod\data\namegen" />
+  </ItemGroup>
+  <ItemGroup>
+    <InterpreterReference Include="{79d1aa8e-4c29-4164-bf34-be8a1b0d762e}\3.3" />
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.Common.targets" />
 </Project>

@@ -2,7 +2,7 @@
 import os.path
 from threading import Thread
 import tcod
-
+import internal_ipkernel as ip
 
 
 def sys_get_events():
@@ -186,7 +186,9 @@ class Console(object):
         """
         self.blit(console, 0, 0, self.width, self.height, 0, 0, 1.0, 1.0)
 
-class RootConsole(Thread, Console):
+# TODO Implement singletons via instance().
+
+class RootConsole(Thread, Console, ip.InternalIPKernel):
     active_root = None
     scratch = None
     temp_console = None
@@ -225,6 +227,7 @@ class RootConsole(Thread, Console):
         self.end_game = False
         self.max_fps = max_fps
         self.background = background
+        self.init_ipkernel('qt')
 
     def flush(self):
         tcod.console_flush()
@@ -238,7 +241,8 @@ class RootConsole(Thread, Console):
                                self.fullscreen, self.renderer)
         tcod.sys_set_fps(self.max_fps)
         tcod.gui.redraw_all_windows()
-        
+        self.new_qt_console()
+
         while (not self.end_game) and (not tcod.console_is_window_closed()):
             events = sys_get_events()
             #self.handle_keys(key)
