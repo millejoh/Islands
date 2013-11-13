@@ -147,17 +147,17 @@ class Console(object):
 
     def vline(self, x, y, length, flag=tcod.BKGND_NONE):
         tcod.console_vline(self._c, x, y, length, flag)
-    
+
     def frame(self, x, y, w, h, text, clear=True, flag=tcod.BKGND_NONE):
         tcod.console_print_frame(self._c, x, y, w, h, clear, flag, text)
 
     def clear(self):
         tcod.console_clear(self._c)
-    
+
     def print_double_frame(self, x, y, width, height, clear=True,
                            flag=tcod.BKGND_DEFAULT, fmt=0):
         """Draw a rectangle like print_frame but draws using `double-line` characters.
-        
+
         """
         tcod.console_print_double_frame(self._c, x, y, width, height, clear,
                                         flag, fmt)
@@ -179,7 +179,7 @@ class Console(object):
         width, height = Size of region in source console to be blitted.
         dx, dy = Location in destination console where rectangle will be blitted.
         fore_alpha, back_alpha = Foreground and background transparency parameters."""
-        
+
         tcod.console_blit(self._c, sx, sy, width, height, dest._c, dx, dy,
                           fore_alpha, back_alpha)
 
