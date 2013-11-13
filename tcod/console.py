@@ -64,7 +64,7 @@ class Console(object):
         if x > self.width or x < 0 or y > self.height or y < 0:
             raise IndexError('Attempt to access cell ({0}, {1}), which is out of range. Console size is ({2}, {3}).'.format(x, y, self.width, self.height))
         
-        if cell is tuple and len(cell) > 3:
+        if cell is tuple and len(cell) >= 3:
             symbol, foreground, background = cell
         elif cell is not tuple:
             symbol = cell
@@ -216,7 +216,10 @@ class RootConsole(Thread, Console):
         else:
             return -1
         
-    def __init__(self, width=80, height=50, title=b'Stage', background=tcod.darker_sepia, font_file=tcod.default_font, datax='', fullscreen=False, renderer=tcod.RENDERER_GLSL, max_fps=30):
+    def __init__(self, width=80, height=50, title=b'Stage',
+                 background=tcod.darker_sepia,
+                 font_file=tcod.default_font, datax='', fullscreen=False,
+                 renderer=tcod.RENDERER_GLSL, max_fps=30):
         super().__init__()
         if os.path.exists(font_file):
             tcod.console_set_custom_font(bytes(font_file, 'utf-8'),
@@ -246,7 +249,6 @@ class RootConsole(Thread, Console):
         tcod.console_init_root(self.width, self.height, self.title,
                                self.fullscreen, self.renderer)
         tcod.sys_set_fps(self.max_fps)
-        tcod.gui.redraw_all_windows()
 
         while (not self.end_game) and (not tcod.console_is_window_closed()):
             events = sys_get_events()

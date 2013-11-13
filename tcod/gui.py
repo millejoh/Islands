@@ -703,7 +703,7 @@ class Viewport(Window):
         """
         """
 
-        super().__init__(*keys)
+        super().__init__(**keys)
         self.transparency = OPAQUE
         self.mwidth = map_width
         self.mheight = map_height
@@ -711,6 +711,9 @@ class Viewport(Window):
         self.view_tlx = view_tlx
         self.view_tly = view_tly
 
+    def __repr__(self):
+        return "Viewport({w.tlx},{w.tly},{w.width},{w.height},title='{w.title}')".format(w=self)
+    
     @property
     def view_width(self):
         if self.framed_p:
@@ -790,7 +793,7 @@ class Viewport(Window):
                                        self.height - 2 if self.framed_p else 0,
                                        clear=True,
                                        flag=tcod.BKGND_SET)
-        self.map_console.blit(self._c, vtlx, vtly, width, height,
+        self.map_console.blit(self, vtlx, vtly, width, height,
                               wtlx, wtly, 1.0, 1.0)
 
     def clear_map(self, auto_redraw=False):
