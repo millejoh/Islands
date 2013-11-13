@@ -348,9 +348,13 @@ class Window(tc.Console):
         self.last_update_time = 0
         self.alive_p = True
         self.touching = []
+
         if parent:
             self.parent = parent
             self.parent.children.append(self)
+        else:
+            self.parent = None
+
         if self.hidden_p:
             HIDDEN_WINDOW_STACK.insert(0, self)
         else:
@@ -441,7 +445,8 @@ class Window(tc.Console):
         """
         if self in WINDOW_STACK:
             self.hide()
-        self.parent.children.remove(self)
+        if self.parent:
+            self.parent.children.remove(self)
         if len(self.children) > 0:
             for child in self.children:
                 child.destroy()
@@ -569,11 +574,11 @@ class Window(tc.Console):
     def prepare(self):
         if self.framed_p:
             if WINDOW_STACK[0] is self:
-                self.print_double_frame(0, 0, self.width, self.height, True,
+                self.print_double_frame(0, 0, self.width, self.height, False,
                                         tcod.BKGND_SET,
                                         bytes(self.title, 'utf-8') if self.title else 0)
             else:
-                self.print_frame(0, 0, self.width, self.height, True,
+                self.print_frame(0, 0, self.width, self.height, False,
                                  tcod.BKGND_SET,
                                  bytes(self.title, 'utf-8') if self.title else 0)
             if self.can_close_p:
@@ -581,11 +586,18 @@ class Window(tc.Console):
             if self.can_resize_p:
                 self[self.width - 1, self.height - 1] = 29
         else:
-            self.draw_rect(0, 0, self.width, self.height, True, tcod.BKGND_SET)
+            self.draw_rect(0, 0, self.width, self.height, False, tcod.BKGND_SET)
 
     def resize(self, new_width, new_height):
         self._untouch_windows()
-        self._c = tcod.console_new(new_width, new_height)
+        resized_console = tcod.console_new(new_width, new_height)
+        if self.framed_p:
+            tcod.console_blit(self._c, 1, 1, self.width-2, self.height-2,
+                              resized_console, 1, 1)
+        else:
+            tcod.console_blit(self._c, 0, 0, self.width, self.height,
+                              resized_console, 0, 0)
+        self._c = resized_console
         self.width = new_width
         self.height = new_height
         self._touch_windows()
@@ -713,7 +725,7 @@ class Viewport(Window):
 
     def __repr__(self):
         return "Viewport({w.tlx},{w.tly},{w.width},{w.height},title='{w.title}')".format(w=self)
-    
+
     @property
     def view_width(self):
         if self.framed_p:
@@ -751,14 +763,13 @@ class Viewport(Window):
         return (-1 < x < self.mwidth) and (-1 < y < self.mheight)
 
     def prepare(self):
-        super().prepare()
         if self.map_console:
             self.copy_map_to_viewport()
+        super().prepare()
 
     def copy_map_to_viewport(self):
         """Copy the visible portion of the viewport contents
         (as set by view_tlx and view_tly) to the root console.
-
         """
 
         vtlx, vtly = self.view_tlx, self.view_tly
