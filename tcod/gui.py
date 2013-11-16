@@ -10,8 +10,8 @@ from tcod.events import *
 from math import floor
 
 AUTO_REDRAW = True
-OPAQUE = 0
-INVISIBLE = 100
+OPAQUE = 1
+INVISIBLE = 0
 DIMMED = 75                # Common values for window_transparency
 BOLD_FACTOR = 1.4          # Multiplier for producing a "bold" version of a color.
 CURRENT_MOUSE_EVENT = None
@@ -423,6 +423,16 @@ class Window(tc.Console):
             if self not in HIDDEN_WINDOW_STACK:
                 HIDDEN_WINDOW_STACK.insert(0, self)
 
+    def unhide(self, redraw=AUTO_REDRAW):
+        self.hidden_p = False
+        HIDDEN_WINDOW_STACK.remove(self)
+        WINDOW_STACK.insert(0, self)
+        if redraw:
+            self.redraw_area(draw_window=True)
+        if self.raise_children_with_parent_p and self.children:
+            for win in self.children:
+                win.unhide()
+
     def window_did_change(self):
         self.changed_p = True
 
@@ -437,7 +447,7 @@ class Window(tc.Console):
         tcod.console_set_dirty(clamp(0, (tc.R.screen_width() - 1), tlx),
                                clamp(0, (tc.R.screen_height() - 1), tly),
                                clamp(0, (tc.R.screen_width() - tlx), w),
-                               clamp(0, (tc.R.screen_height() - tly), w))
+                               clamp(0, (tc.R.screen_height() - tly), h))
 
     def destroy(self):
         """Destroy the window object, hiding it first if it is not already
@@ -529,18 +539,20 @@ class Window(tc.Console):
         self.copy_to_console(tc.R.active_root)
 
     def redraw_area(self, draw_window=True):
+        if draw_window and self.children:
+            for win in self.children:
+                if not win.hidden_p:
+                    win.redraw_area(draw_window=True)
+
+        for w in self.windows_overlapping(include_window=draw_window):
+            self.redraw()
+            #self.redraw_intersection(w, fade=fade_for_window(w))
+
         if not draw_window:
             tc.R.active_root.background = tcod.black
             tc.R.active_root.draw_rect(self.tlx, self.tly,
                                        self.width, self.height,
                                        True, tcod.BKGND_SET)
-        if draw_window and self.children:
-            for win in self.children:
-                if not win.hidden_p:
-                    win.redraw_area(draw_window=True)
-        for w in self.windows_overlapping(include_window=draw_window):
-            self.redraw()
-            #self.redraw_intersection(w, fade=fade_for_window(w))
 
         self.dirty_window()
 
@@ -574,11 +586,11 @@ class Window(tc.Console):
     def prepare(self):
         if self.framed_p:
             if WINDOW_STACK[0] is self:
-                self.print_double_frame(0, 0, self.width, self.height, False,
+                self.print_double_frame(0, 0, self.width, self.height, True,
                                         tcod.BKGND_SET,
                                         bytes(self.title, 'utf-8') if self.title else 0)
             else:
-                self.print_frame(0, 0, self.width, self.height, False,
+                self.print_frame(0, 0, self.width, self.height, True,
                                  tcod.BKGND_SET,
                                  bytes(self.title, 'utf-8') if self.title else 0)
             if self.can_close_p:
@@ -586,7 +598,7 @@ class Window(tc.Console):
             if self.can_resize_p:
                 self[self.width - 1, self.height - 1] = 29
         else:
-            self.draw_rect(0, 0, self.width, self.height, False, tcod.BKGND_SET)
+            self.draw_rect(0, 0, self.width, self.height, True, tcod.BKGND_SET)
 
     def resize(self, new_width, new_height):
         self._untouch_windows()
@@ -763,9 +775,9 @@ class Viewport(Window):
         return (-1 < x < self.mwidth) and (-1 < y < self.mheight)
 
     def prepare(self):
+        super().prepare()
         if self.map_console:
             self.copy_map_to_viewport()
-        super().prepare()
 
     def copy_map_to_viewport(self):
         """Copy the visible portion of the viewport contents
@@ -802,8 +814,8 @@ class Viewport(Window):
                                        1 if self.framed_p else 0,
                                        self.width - 2 if self.framed_p else 0,
                                        self.height - 2 if self.framed_p else 0,
-                                       clear=True,
-                                       flag=tcod.BKGND_SET)
+                                       clear=False,
+                                       flag=tcod.BKGND_NONE)
         self.map_console.blit(self, vtlx, vtly, width, height,
                               wtlx, wtly, 1.0, 1.0)
 

@@ -22,9 +22,9 @@ import os, os.path
 #     if win_path not in sys.path:
 #         sys.path.append(win_path)
 
-print('Tcod load path = ', os.path.dirname(os.path.abspath(__file__)))
+#print('Tcod load path = ', os.path.dirname(os.path.abspath(__file__)))
 os.environ['PATH'] = os.path.dirname(os.path.abspath(__file__)) + ';' + os.environ['PATH']
-print('PATH = ', os.environ['PATH'])
+#print('PATH = ', os.environ['PATH'])
 
 from tcod.libtcodpy import *
 

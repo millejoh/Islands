@@ -63,8 +63,8 @@ class Console(object):
         x, y = index
         if x > self.width or x < 0 or y > self.height or y < 0:
             raise IndexError('Attempt to access cell ({0}, {1}), which is out of range. Console size is ({2}, {3}).'.format(x, y, self.width, self.height))
-        
-        if cell is tuple and len(cell) >= 3:
+
+        if isinstance(cell, tuple) and len(cell) >= 3:
             symbol, foreground, background = cell
         elif cell is not tuple:
             symbol = cell

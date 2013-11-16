@@ -7,21 +7,21 @@ import numpy as np
 biomes = [ ['SNOW', 'SNOW', 'SNOW', 'TUNDRA', 'BARE', 'SCORCHED'],
        	   ['TAIGA', 'TAIGA', 'SHRUBLAND', 'SHRUBLAND', 'TEMPERATE_DESERT', 'TEMPERATE_DESERT'],
            ['TEMPERATE_RAIN_FOREST', 'TEMPERATE_DECIDUOUS_FOREST', 'TEMPERATE_DECIDUOUS_FOREST', 'GRASSLAND', 'GRASSLAND', 'TEMPERATE_DESERT'],
-	   ['TROPICAL_RAIN_FOREST', 'TROPICAL_RAIN_FOREST', 'TROPICAL_SEASONAL_FOREST', 'TROPICAL_SEASONAL_FOREST', 'GRASSLAND', 'SUBTROPICAL_DESERT'] ]
+           ['TROPICAL_RAIN_FOREST', 'TROPICAL_RAIN_FOREST', 'TROPICAL_SEASONAL_FOREST', 'TROPICAL_SEASONAL_FOREST', 'GRASSLAND', 'SUBTROPICAL_DESERT'] ]
 
 biome_colors = { 'SNOW'      : tcod.Color(248,248,248),
-		 'TUNDRA'    : tcod.Color(221,221,187),
-		 'BARE'      : tcod.Color(187,187,187),
-		 'SCORCHED'  : tcod.Color(153,153,153),
-		 'TAIGA'     : tcod.Color(204,212,187),
-		 'SHRUBLAND' : tcod.Color(194,204,187),
-		 'GRASSLAND' : tcod.Color(192,212,170),
-		 'TEMPERATE_DESERT'           : tcod.Color(228,232,202),
-		 'TEMPERATE_RAIN_FOREST'      : tcod.Color(164,196,168),
-		 'TEMPERATE_DECIDUOUS_FOREST' : tcod.Color(180,201,169),
-		 'TROPICAL_RAIN_FOREST'       : tcod.Color(156,187,169),
-		 'TROPICAL_SEASONAL_FOREST'   : tcod.Color(169,204,164),
-		 'SUBTROPICAL_DESERT'         : tcod.Color(233,221,199) }
+                 'TUNDRA'    : tcod.Color(221,221,187),
+                 'BARE'      : tcod.Color(187,187,187),
+                 'SCORCHED'  : tcod.Color(153,153,153),
+                 'TAIGA'     : tcod.Color(204,212,187),
+                 'SHRUBLAND' : tcod.Color(194,204,187),
+                 'GRASSLAND' : tcod.Color(192,212,170),
+                 'TEMPERATE_DESERT'           : tcod.Color(228,232,202),
+                 'TEMPERATE_RAIN_FOREST'      : tcod.Color(164,196,168),
+                 'TEMPERATE_DECIDUOUS_FOREST' : tcod.Color(180,201,169),
+                 'TROPICAL_RAIN_FOREST'       : tcod.Color(156,187,169),
+                 'TROPICAL_SEASONAL_FOREST'   : tcod.Color(169,204,164),
+                 'SUBTROPICAL_DESERT'         : tcod.Color(233,221,199) }
 
 class Tile(object):
     def __init__(self):
@@ -72,6 +72,15 @@ class MapChunk(object):
                 y = oy + j
                 console[x,y] = (' ', tcod.foreground, biome_colors[self.terrain[x,y]])
 
+    def draw_elevation_region(self, rect, console):
+        ox, oy, w, h = rect
+        for i in range(w):
+            x = ox + i
+            for j in range(h):
+                y = oy + j
+                intensity = tcod.color_lerp(tcod.black, tcod.white, self.elevation[x,y])
+                console[x,y] = (' ', tcod.foreground, intensity)
+                                
 
 class gObject(object):
     def __init__(self, x, y, char, color):
