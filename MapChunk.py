@@ -70,16 +70,17 @@ class MapChunk(object):
             x = ox + i
             for j in range(h):
                 y = oy + j
-                console[x,y] = (' ', tcod.foreground, biome_colors[self.terrain[x,y]])
+                console[x,y] = (' ', tcod.white, biome_colors[self.terrain[x,y]])
 
-    def draw_elevation_region(self, rect, console):
+    def draw_elevation_region(self, rect, console, as_color=True):
         ox, oy, w, h = rect
         for i in range(w):
             x = ox + i
             for j in range(h):
                 y = oy + j
-                intensity = tcod.color_lerp(tcod.black, tcod.white, self.elevation[x,y])
-                console[x,y] = (' ', tcod.foreground, intensity)
+                if as_color:
+                    intensity = tcod.color_lerp(tcod.black, tcod.white, self.elevation[x,y])
+                    console[x,y] = (' ', tcod.white, intensity)
                                 
 
 class gObject(object):
