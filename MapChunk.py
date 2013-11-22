@@ -23,6 +23,15 @@ biome_colors = { 'SNOW'      : tcod.Color(248,248,248),
                  'TROPICAL_SEASONAL_FOREST'   : tcod.Color(169,204,164),
                  'SUBTROPICAL_DESERT'         : tcod.Color(233,221,199) }
 
+
+# Do I want to make the following two classes ABC's (abstract base classes)?
+class Prop(object):
+    def __init__(self, ox, oy, shape, name=None):
+        """Create a prop (basic game object) with shape <shape> center at coordinate (ox, oy).
+        """
+        pass
+
+    
 class Tile(object):
     def __init__(self):
         self.elevation = 0.0
