@@ -11,14 +11,21 @@ class GUIEvent(object):
     def __repr__(self):
         return "GUIEvent(window={self.window},winx={self.winx},winy={self.winy})".format(self=self)
 
+
 class MouseEvent(GUIEvent):
     def __init__(self, mouse_state=None, double_click=False, **kwargs):
         super().__init__(kwargs)
         self.state = mouse_state
         self.double_click = double_click
 
+
 class MouseDragEvent(MouseEvent):
     def __init__(self, mouse_state=None, **kwargs):
         super().__init__(kwargs)
         self.state = mouse_state
 
+
+class KeyEvent(GUIEvent):
+    def __init__(self, key, **kwargs):
+        super().__init__(**kwargs)
+        self.key_info = key

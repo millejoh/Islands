@@ -3,6 +3,7 @@ import tcod
 from tcod.tools import Heightmap
 import random as r
 import numpy as np
+from pyDatalog import pyDatalog
 
 biomes = [ ['SNOW', 'SNOW', 'SNOW', 'TUNDRA', 'BARE', 'SCORCHED'],
        	   ['TAIGA', 'TAIGA', 'SHRUBLAND', 'SHRUBLAND', 'TEMPERATE_DESERT', 'TEMPERATE_DESERT'],
@@ -25,13 +26,43 @@ biome_colors = { 'SNOW'      : tcod.Color(248,248,248),
 
 
 # Do I want to make the following two classes ABC's (abstract base classes)?
-class Prop(object):
-    def __init__(self, ox, oy, shape, name=None):
-        """Create a prop (basic game object) with shape <shape> center at coordinate (ox, oy).
+class Prop(pyDatalog.Mixin):
+    def __init__(self, glyph, ox=0.0, oy=0.0, oz=0.0, color=tcod.white,
+                 name='GenericProp'):
+        """Create a prop (basic game object) with shape <shape> center at
+        coordinate (ox, oy).
         """
-        pass
+        super().__init__()
+        self.x, self.y, self.x = ox, oy, oz
+        self.glyph = glyph
+        self.fore_color = color
+        self.attr['name'] = name
 
-    
+    def __repr__(self):
+        return 'Prop({0}, name={5}, x={1}, y={2}, z={3}, color={4})'.format(self.glyph, self.x, self.y, self.z, self.color, self.name)
+
+    @property
+    def pos(self):
+        return np.array([self.x, self.y, self.z])
+
+    def draw_to(self, console, background=None):
+        console[self._x, self._y] = (self.glyph, self.fore_color, background)
+
+    def clear(self, console):
+        console[self._x, self._y] = (' ', self._color, tcod.BKGND_NONE)
+
+
+class Actor(Prop):
+    def __init__(self, **keys):
+        super().__init__(**keys)
+
+
+class Player(Prop):
+    def __init__(self, **keys):
+        super().__init__(**keys)
+        self.glyph = '@'
+
+
 class Tile(object):
     def __init__(self):
         self.elevation = 0.0
@@ -41,6 +72,7 @@ class Tile(object):
 
     def determine_color(self):
         pass
+
 
 class MapChunk(object):
     def __init__(self, width, height, offset=[0, 0]):
@@ -53,10 +85,12 @@ class MapChunk(object):
         self.precipitation = Heightmap(width, height)
         self.temperature = Heightmap(width, height)
         self.terrain = np.zeros((width, height))
+        self.props = []
+        self.actors = []
 
     def __del__(self):
         tcod.random_delete(self.__rng)
-        
+
     def random_island(self, sx, sy, width, height, roughness=1.0):
         """Add an island to the map.
 
@@ -88,26 +122,8 @@ class MapChunk(object):
             for j in range(h):
                 y = oy + j
                 if as_color:
-                    intensity = tcod.color_lerp(tcod.black, tcod.white, self.elevation[x,y])
-                    console[x,y] = (' ', tcod.white, intensity)
-                                
-
-class gObject(object):
-    def __init__(self, x, y, char, color):
-        self._x, self._y = x, y
-        self._char = char
-        self._color = color
-
-    def draw(self, console):
-        console[self._x, self._y] = (self._char, self._color, tcod.BKGND_NONE)
-
-    def clear(self, console):
-        console[self._x, self._y] = (' ', self._color, tcod.BKGND_NONE)
-
-class Player(gObject):
-    def __init__(self, x, y):
-        self._x, self._y = x, y
-        self._char = '@'
-        self._color = tcod.white
+                    intensity = tcod.color_lerp(tcod.black, tcod.white,
+                                                self.elevation[x, y]/100.0)
+                    console[x, y] = (' ', tcod.white, intensity)
 
 

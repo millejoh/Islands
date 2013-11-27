@@ -239,11 +239,11 @@ def send_mouse_click_event(event):
 
 
 def send_key_to_window(window, key, x, y):
-    if TOPWIN:
+    if windoq:
         kevent = Key(key, window=window,
                      winx=event.cx - TOPWIN.tlx,
                      winy=event.cy - TOPWIN.tly)
-        TOPWIN.send_to_window(kevent)
+        window.send_to_window(kevent)
 
 def handle_drag_event(mouse):
     """Check for and handle (if necessary) drag events.

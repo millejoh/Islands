@@ -2,7 +2,6 @@
 import os.path
 from threading import Thread
 import tcod
-import internal_ipkernel as ip
 
 
 def sys_get_events():
@@ -15,22 +14,27 @@ def sys_get_events():
             break
         elif event == tcod.EVENT_KEY_PRESS or event == tcod.EVENT_KEY_RELEASE:
             events.append((event, key))
-        elif event in (tcod.EVENT_MOUSE_MOVE, tcod.EVENT_MOUSE_PRESS, tcod.EVENT_MOUSE_RELEASE):
+        elif event in (tcod.EVENT_MOUSE_MOVE,
+                       tcod.EVENT_MOUSE_PRESS,
+                       tcod.EVENT_MOUSE_RELEASE):
             events.append((event, mouse))
     return events
-        
-        
+
+
 # Make a subclass of Tuple?
 class ConsoleCell(object):
-    """Represent a console cell as a 3-element tuple: symbol (or character), foreground color,
-and background color."""
+    """Represent a console cell as a 3-element tuple: symbol (or character),
+    foreground color, and background color."""
     def __init__(self, symbol=' ', foreground=None, background=None):
         self.symbol = symbol
         self.foreground = foreground
         self.background = background
 
     def __repr__(self):
-        return 'ConsoleCell({0},{1},{2})'.format(self.symbol, self.foreground, self.background)
+        return 'ConsoleCell({0},{1},{2})'.format(self.symbol,
+                                                 self.foreground,
+                                                 self.background)
+
 
 class Console(object):
     def __init__(self, width, height):
@@ -56,7 +60,7 @@ class Console(object):
         return (chr(tcod.console_get_char(self._c, x, y)),
                 tcod.console_get_char_foreground(self._c, x, y),
                 tcod.console_get_char_background(self._c, x, y))
-    
+
     def __setitem__(self, index, cell):
         if isinstance(index, slice):
             raise TypeError('Console objects do not support slices. Yet.')
@@ -68,12 +72,18 @@ class Console(object):
             symbol, foreground, background = cell
         elif cell is not tuple:
             symbol = cell
-            foreground = self.foreground
-            background = self.background
+            foreground = self.get_char_foreground(x, y)
+            background = self.get_char_background(x, y)
         else:
             symbol = cell[0]
-            foreground = self.foreground
-            background = self.background
+            foreground = cell[2]
+            background = self.get_char_background(x, y)
+
+        if background is None:
+            background = self.get_char_background(x, y)
+
+        if foreground is None:
+            foreground = self.get_char_foreground(x, y)
 
         tcod.console_put_char_ex(self._c, x, y, symbol, foreground, background)
 
@@ -122,6 +132,12 @@ class Console(object):
     def window_closed(self):
         return tcod.console_is_window_closed()
 
+    def get_char_foreground(self, x, y):
+        return tcod.console_get_char_foreground(self._c, x, y)
+
+    def get_char_background(self, x, y):
+        return tcod.console_get_char_background(self._c, x, y)
+    
     def put_cell(self, x, y, sym, flag=tcod.BKGND_NONE):
         tcod.console_put_char(self._c, x, y, sym, flag)
 
@@ -147,39 +163,50 @@ class Console(object):
 
     def vline(self, x, y, length, flag=tcod.BKGND_NONE):
         tcod.console_vline(self._c, x, y, length, flag)
-    
+
     def frame(self, x, y, w, h, text, clear=True, flag=tcod.BKGND_NONE):
         tcod.console_print_frame(self._c, x, y, w, h, clear, flag, text)
 
     def clear(self):
         tcod.console_clear(self._c)
-    
+
     def print_double_frame(self, x, y, width, height, clear=True,
                            flag=tcod.BKGND_DEFAULT, fmt=0):
-        """Draw a rectangle like print_frame but draws using `double-line` characters.
-        
+        """Draw a rectangle like print_frame but draws using `double-line`
+        characters.
+
         """
+
         tcod.console_print_double_frame(self._c, x, y, width, height, clear,
                                         flag, fmt)
 
     def print_frame(self, x, y, width, height, clear=True,
                     flag=tcod.BKGND_DEFAULT, fmt=0):
-        """Draw a rectangle with size `width` and `height` located at position (
-
+        """Draw a rectangle with size `width` and `height` located at
+        position (x, y).
         """
-        tcod.console_print_frame(self._c, x, y, width, height, clear, flag, fmt)
-        pass
+        tcod.console_print_frame(self._c, x, y,
+                                 width, height,
+                                 clear, flag, fmt)
 
-    def blit(self, dest, sx, sy, width, height, dx, dy, fore_alpha, back_alpha):
-        """Blit rectangular region of a console to a specific position in another
-        console.
+    def blit(self, dest, sx, sy, width, height, dx, dy,
+             fore_alpha, back_alpha):
+        """Blit rectangular region of a console to a specific position
+        in another console.
 
         dest = Destination console.
-        sx, sy = Upper left corner of rectangle in source console to be blitted.
+
+        sx, sy = Upper left corner of rectangle in source console to be
+        blitted.
+
         width, height = Size of region in source console to be blitted.
-        dx, dy = Location in destination console where rectangle will be blitted.
-        fore_alpha, back_alpha = Foreground and background transparency parameters."""
-        
+
+        dx, dy = Location in destination console where rectangle will be
+        blitted.
+
+        fore_alpha, back_alpha = Foreground and background transparency
+        parameters."""
+
         tcod.console_blit(self._c, sx, sy, width, height, dest._c, dx, dy,
                           fore_alpha, back_alpha)
 
@@ -215,7 +242,7 @@ class RootConsole(Thread, Console):
             return cls.active_root.height
         else:
             return -1
-        
+
     def __init__(self, width=80, height=50, title=b'Stage',
                  background=tcod.darker_sepia,
                  font_file=tcod.default_font, datax='', fullscreen=False,
