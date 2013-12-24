@@ -1,6 +1,8 @@
 # Try to find libtcodpy
 import tcod
 from tcod.tools import Heightmap
+from pyDatalog import pyDatalog
+from uuid import uuid1
 import random as r
 import numpy as np
 
@@ -25,13 +27,6 @@ biome_colors = { 'SNOW'      : tcod.Color(248,248,248),
 
 
 # Do I want to make the following two classes ABC's (abstract base classes)?
-class Prop(object):
-    def __init__(self, ox, oy, shape, name=None):
-        """Create a prop (basic game object) with shape <shape> center at coordinate (ox, oy).
-        """
-        pass
-
-    
 class Tile(object):
     def __init__(self):
         self.elevation = 0.0
@@ -92,22 +87,47 @@ class MapChunk(object):
                     console[x,y] = (' ', tcod.white, intensity)
                                 
 
-class gObject(object):
-    def __init__(self, x, y, char, color):
-        self._x, self._y = x, y
-        self._char = char
-        self._color = color
+# With inspiration from Chapter 8.11 of Python Cookbook, 3rd Edition.
 
+class DefaultStructure(object):
+    _fields = {}
+
+    def __init__(self, **kwargs):
+        """A class that eneralizes slot initialization of an object. Allows for specification of default values.
+
+        Simplify writing of __init__ methods by specifying a dictionary in the class slot _fields as is
+        similarly done in Chapter 8.11 of the Python Cookbook, 3rd Edition.
+
+        _fields is a dictionary of slot names and default values. The new class only accepts keyword
+        arguments during object initialization (it's a feature, not a bug!).
+        """
+    
+        for name in kwargs.keys():
+            setattr(self, name, kwargs[name])
+            
+        for name, value in self._fields.items():
+            if not hasattr(self, name):
+                setattr(self, name, value)
+
+class gEntity(DefaultStructure):#, pyDatalog.Mixin):
+    _fields = {'x':0, 'y':0, 'z':0, 'eclass':'entity', 'char':' ', 'color':tcod.white}
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self._id = uuid1()
+        
+    @property
+    def pos(self):
+        return (self.x, self.y, self.z)
+    
     def draw(self, console):
         console[self._x, self._y] = (self._char, self._color, tcod.BKGND_NONE)
 
     def clear(self, console):
         console[self._x, self._y] = (' ', self._color, tcod.BKGND_NONE)
 
-class Player(gObject):
-    def __init__(self, x, y):
-        self._x, self._y = x, y
-        self._char = '@'
-        self._color = tcod.white
+    def __repr__(self):
+        return '<gEntity {}>'.format(self.eclass)
+    
 
 

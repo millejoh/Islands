@@ -1,0 +1,1 @@
+\Anaconda\envs\py33\Scripts\ipython.bat notebook
