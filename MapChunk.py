@@ -26,30 +26,27 @@ biome_colors = { 'SNOW'      : tcod.Color(248,248,248),
 
 
 # Do I want to make the following two classes ABC's (abstract base classes)?
-class Prop(pyDatalog.Mixin):
+class Prop(object):
     def __init__(self, glyph, ox=0.0, oy=0.0, oz=0.0, color=tcod.white,
                  name='GenericProp'):
         """Create a prop (basic game object) with shape <shape> center at
         coordinate (ox, oy).
         """
         super().__init__()
-        self.x, self.y, self.x = ox, oy, oz
+        self.x, self.y, self.z = ox, oy, oz
         self.glyph = glyph
         self.fore_color = color
-        self.attr['name'] = name
-
-    def __repr__(self):
-        return 'Prop({0}, name={5}, x={1}, y={2}, z={3}, color={4})'.format(self.glyph, self.x, self.y, self.z, self.color, self.name)
+        #self.attr['name'] = name
 
     @property
     def pos(self):
         return np.array([self.x, self.y, self.z])
 
     def draw_to(self, console, background=None):
-        console[self._x, self._y] = (self.glyph, self.fore_color, background)
+        console[self.x, self.y] = (self.glyph, self.fore_color, background)
 
     def clear(self, console):
-        console[self._x, self._y] = (' ', self._color, tcod.BKGND_NONE)
+        console[self.x, self.y] = (' ', self.fore_color, tcod.BKGND_NONE)
 
 
 class Actor(Prop):

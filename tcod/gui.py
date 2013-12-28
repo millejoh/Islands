@@ -206,7 +206,7 @@ def fade_for_window(win):
         return transparency_to_fade(win.transparency_unfocused)
 
 
-def send_mouse_move_event(event):
+def send_mouse_move_event(window, event):
     pass
 
 
@@ -221,29 +221,27 @@ def mouse_click_type(mouse_event):
         return None
 
 
-def send_mouse_click_event(event):
+def send_mouse_click_event(window, event):
     global LAST_MOUSE_CLICK
     double_click = False
-    if TOPWIN:
-        if event.lbutton and event.cy == TOPWIN.tly and event.cx == TOPWIN.brx and TOPWIN.can_close_p:
-            TOPWIN.hide()
+    if window:
+        if event.lbutton and event.cy == window.tly and event.cx == window.brx and window.can_close_p:
+            window.hide()
         elif LAST_MOUSE_CLICK and mouse_click_type(event) == mouse_click_type(LAST_MOUSE_CLICK.state) and \
           (tcod.sys_elapsed_milli() - LAST_MOUSE_CLICK.time) < DOUBLE_CLICK_SPEED:
             double_click = True
-        LAST_MOUSE_CLICK = MouseEvent(winx=event.cx - TOPWIN.tlx,
-                                      winy=event.cy - TOPWIN.tly,
+        LAST_MOUSE_CLICK = MouseEvent(winx=event.cx - window.tlx,
+                                      winy=event.cy - window.tly,
                                       mouse_state=event,
-                                      window=TOPWIN,
+                                      window=window,
                                       double_click=double_click)
-        TOPWIN.send_to_window(LAST_MOUSE_CLICK)
+        window.send_to_window(LAST_MOUSE_CLICK)
 
 
-def send_key_to_window(window, key, x, y):
-    if TOPWIN:
-        kevent = Key(key, window=window,
-                     winx=event.cx - TOPWIN.tlx,
-                     winy=event.cy - TOPWIN.tly)
-        TOPWIN.send_to_window(kevent)
+def send_key_event(window, key, x, y):
+    kevent = KeyEvent(key, window=window, winx=x, winy=y)
+    window.send_to_window(kevent)
+
 
 def handle_drag_event(mouse):
     """Check for and handle (if necessary) drag events.
@@ -276,7 +274,7 @@ def handle_drag_event(mouse):
 
 
 def gui_loop(events):
-    global CURRENT_MOUSE_EVENT, MOUSE_X, MOUSE_Y, TOPWIN, LAST_TOPWIN, FOCUS_CHANGED
+    global CURRENT_MOUSE_EVENT, MOUSE_X, MOUSE_Y, TOPWIN, LAST_TOPWIN, FOCUS_CHANGED 
     # Go through any (all) events in the queue
     CURRENT_MOUSE_EVENT = tcod.mouse_get_status()
     for (event_type, event) in events:
@@ -285,17 +283,17 @@ def gui_loop(events):
             MOUSE_X, MOUSE_Y = event.cx, event.cy
             if event_type == tcod.EVENT_MOUSE_MOVE:
                 FOCUS_CHANGED = window_with_mouse_focus() != LAST_TOPWIN
-                send_mouse_move_event(event)
+                send_mouse_move_event(window_with_mouse_focus(), event)
             elif event_type in (tcod.EVENT_MOUSE_PRESS, tcod.EVENT_MOUSE_RELEASE):
                 TOPWIN = window_with_mouse_focus()
                 FOCUS_CHANGED = TOPWIN != LAST_TOPWIN
-                send_mouse_click_event(event)
+                send_mouse_click_event(TOPWIN, event)
         if isinstance(event, tcod.Key):
             TOPWIN = window_with_key_focus()
             if TOPWIN:
-                send_key_to_window(TOPWIN, event,
-                                   MOUSE_X - TOPWIN.tlx,
-                                   MOUSE_Y - TOPWIN.tly)
+                send_key_event(TOPWIN, event,
+                               MOUSE_X - TOPWIN.tlx,
+                               MOUSE_Y - TOPWIN.tly)
         # That's done, now look at the state of the mouse
     if CURRENT_MOUSE_EVENT and CURRENT_MOUSE_EVENT.lbutton and \
             TOPWIN and not TOPWIN.hidden_p:
@@ -311,7 +309,7 @@ def gui_loop(events):
                        "Mouse position, lbutton = ({0}, {1}, {2})".format(MOUSE_X,
                                                                           MOUSE_Y,
                                                                           CURRENT_MOUSE_EVENT.lbutton if CURRENT_MOUSE_EVENT else None))
-    
+
     tcod.console_print(tcod.root_console, 0, 2,
                        "FPS = {0}".format(tcod.sys_get_fps()))
     tcod.console_print(tcod.root_console, 0, 3,

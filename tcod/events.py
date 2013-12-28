@@ -8,8 +8,8 @@ class GUIEvent(object):
         self.winy = winy
         self.time = tcod.sys_elapsed_milli()
 
-    def __repr__(self):
-        return "GUIEvent(window={self.window},winx={self.winx},winy={self.winy})".format(self=self)
+    # def __repr__(self):
+    #     return "GUIEvent(window={self.window},winx={self.winx},winy={self.winy})".format(self=self)
 
 
 class MouseEvent(GUIEvent):

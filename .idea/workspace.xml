@@ -2,11 +2,11 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="c867a75b-4a8d-451e-bf10-634d7aa6a360" name="Default" comment="">
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/tcod/#gui.py#" afterPath="$PROJECT_DIR$/tcod/#gui.py#" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/tcod/console.py" afterPath="$PROJECT_DIR$/tcod/console.py" />
+      <change type="DELETED" beforePath="C:\Users\millejoh\Documents\GitHub\Islands\tcod\#gui.py#" afterPath="" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/Islands.ipynb" afterPath="$PROJECT_DIR$/Islands.ipynb" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/MapChunk.py" afterPath="$PROJECT_DIR$/MapChunk.py" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/tcod/events.py" afterPath="$PROJECT_DIR$/tcod/events.py" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/tcod/gui.py" afterPath="$PROJECT_DIR$/tcod/gui.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/main.py" afterPath="$PROJECT_DIR$/main.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
     </list>
     <ignored path="Islands.iws" />
     <ignored path=".idea/workspace.xml" />
@@ -32,7 +32,7 @@
       <file leaf-file-name="main.py" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/main.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="4" column="0" selection-start="54" selection-end="54" vertical-scroll-proportion="0.0" vertical-offset="0" max-vertical-offset="204">
+            <state line="4" column="0" selection-start="54" selection-end="54" vertical-scroll-proportion="0.0" vertical-offset="68" max-vertical-offset="204">
               <folding />
             </state>
           </provider>
@@ -41,7 +41,7 @@
       <file leaf-file-name="__init__.py" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/tcod/__init__.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="34" column="23" selection-start="1126" selection-end="1126" vertical-scroll-proportion="0.0" vertical-offset="578" max-vertical-offset="782">
+            <state line="35" column="0" selection-start="1129" selection-end="1129" vertical-scroll-proportion="0.0" vertical-offset="595" max-vertical-offset="782">
               <folding />
             </state>
           </provider>
@@ -50,7 +50,7 @@
       <file leaf-file-name="console.py" pinned="false" current="true" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/tcod/console.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="32" column="0" selection-start="978" selection-end="978" vertical-scroll-proportion="0.50152594" vertical-offset="0" max-vertical-offset="4437">
+            <state line="36" column="0" selection-start="1175" selection-end="1175" vertical-scroll-proportion="-0.03420523" vertical-offset="612" max-vertical-offset="4947">
               <folding />
             </state>
           </provider>
@@ -79,8 +79,8 @@
         <option value="$PROJECT_DIR$/tcod/__init__.py" />
         <option value="$PROJECT_DIR$/internal_ipkernel.py" />
         <option value="$PROJECT_DIR$/main.py" />
-        <option value="$PROJECT_DIR$/tcod/console.py" />
         <option value="$PROJECT_DIR$/tcod/gui.py" />
+        <option value="$PROJECT_DIR$/tcod/console.py" />
       </list>
     </option>
   </component>
@@ -142,12 +142,12 @@
   <component name="PropertiesComponent">
     <property name="GoToFile.includeJavaFiles" value="false" />
     <property name="options.splitter.main.proportions" value="0.3" />
-    <property name="options.lastSelected" value="com.jetbrains.python.documentation.PythonDocumentationConfigurable" />
     <property name="recentsLimit" value="5" />
+    <property name="options.lastSelected" value="com.jetbrains.python.documentation.PythonDocumentationConfigurable" />
     <property name="last_opened_file_path" value="$PROJECT_DIR$/../cl-dormouse/dormouse.lisp" />
     <property name="FullScreen" value="false" />
-    <property name="options.searchVisible" value="true" />
     <property name="options.splitter.details.proportions" value="0.2" />
+    <property name="options.searchVisible" value="true" />
   </component>
   <component name="PyConsoleOptionsProvider">
     <option name="myPythonConsoleState">
@@ -470,16 +470,14 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/tcod/__init__.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="34" column="23" selection-start="1126" selection-end="1126" vertical-scroll-proportion="0.0" vertical-offset="103" max-vertical-offset="765">
+        <state line="35" column="0" selection-start="1129" selection-end="1129" vertical-scroll-proportion="0.0" vertical-offset="595" max-vertical-offset="782">
           <folding />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/internal_ipkernel.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="2" column="0" selection-start="89" selection-end="89" vertical-scroll-proportion="0.0" vertical-offset="0" max-vertical-offset="1207">
-          <folding />
-        </state>
+        <state line="2" column="0" selection-start="89" selection-end="89" vertical-scroll-proportion="0.0" vertical-offset="0" max-vertical-offset="1207" />
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/main.py">
@@ -493,14 +491,14 @@
       <provider selected="true" editor-type-id="text-editor">
         <state line="770" column="28" selection-start="27819" selection-end="27819" vertical-scroll-proportion="0.96586347" vertical-offset="12128" max-vertical-offset="13209">
           <folding>
-            <element signature="e#194#219#0" expanded="true" />
+            <element signature="e#194#219#0" expanded="false" />
           </folding>
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/tcod/console.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="32" column="0" selection-start="978" selection-end="978" vertical-scroll-proportion="0.50152594" vertical-offset="0" max-vertical-offset="4437">
+        <state line="36" column="0" selection-start="1175" selection-end="1175" vertical-scroll-proportion="-0.03420523" vertical-offset="612" max-vertical-offset="4947">
           <folding />
         </state>
       </provider>
