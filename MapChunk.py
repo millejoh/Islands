@@ -1,6 +1,8 @@
 # Try to find libtcodpy
 import tcod
 from tcod.tools import Heightmap
+from pyDatalog import pyDatalog
+from uuid import uuid1
 import random as r
 import numpy as np
 from pyDatalog import pyDatalog
@@ -23,42 +25,6 @@ biome_colors = { 'SNOW'      : tcod.Color(248,248,248),
                  'TROPICAL_RAIN_FOREST'       : tcod.Color(156,187,169),
                  'TROPICAL_SEASONAL_FOREST'   : tcod.Color(169,204,164),
                  'SUBTROPICAL_DESERT'         : tcod.Color(233,221,199) }
-
-
-# Do I want to make the following two classes ABC's (abstract base classes)?
-class Prop(object):
-    def __init__(self, glyph, ox=0.0, oy=0.0, oz=0.0, color=tcod.white,
-                 name='GenericProp'):
-        """Create a prop (basic game object) with shape <shape> center at
-        coordinate (ox, oy).
-        """
-        super().__init__()
-        self.x, self.y, self.z = ox, oy, oz
-        self.glyph = glyph
-        self.fore_color = color
-        #self.attr['name'] = name
-
-    @property
-    def pos(self):
-        return np.array([self.x, self.y, self.z])
-
-    def draw_to(self, console, background=None):
-        console[self.x, self.y] = (self.glyph, self.fore_color, background)
-
-    def clear(self, console):
-        console[self.x, self.y] = (' ', self.fore_color, tcod.BKGND_NONE)
-
-
-class Actor(Prop):
-    def __init__(self, **keys):
-        super().__init__(**keys)
-
-
-class Player(Prop):
-    def __init__(self, **keys):
-        super().__init__(**keys)
-        self.glyph = '@'
-
 
 class Tile(object):
     def __init__(self):
@@ -122,5 +88,47 @@ class MapChunk(object):
                     intensity = tcod.color_lerp(tcod.black, tcod.white,
                                                 self.elevation[x, y]/100.0)
                     console[x, y] = (' ', tcod.white, intensity)
+                                
 
+# With inspiration from Chapter 8.11 of Python Cookbook, 3rd Edition.
+
+class DefaultStructure(object):
+    _fields = {}
+
+    def __init__(self, **kwargs):
+        """A class that eneralizes slot initialization of an object. Allows for specification of default values.
+
+        Simplify writing of __init__ methods by specifying a dictionary in the class slot _fields as is
+        similarly done in Chapter 8.11 of the Python Cookbook, 3rd Edition.
+
+        _fields is a dictionary of slot names and default values. The new class only accepts keyword
+        arguments during object initialization (it's a feature, not a bug!).
+        """
+    
+        for name in kwargs.keys():
+            setattr(self, name, kwargs[name])
+            
+        for name, value in self._fields.items():
+            if not hasattr(self, name):
+                setattr(self, name, value)
+
+class gEntity(DefaultStructure):#, pyDatalog.Mixin):
+    _fields = {'x':0, 'y':0, 'z':0, 'eclass':'entity', 'char':' ', 'color':tcod.white}
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self._id = uuid1()
+        
+    @property
+    def pos(self):
+        return (self.x, self.y, self.z)
+    
+    def draw(self, console):
+        console[self._x, self._y] = (self._char, self._color, tcod.BKGND_NONE)
+
+    def clear(self, console):
+        console[self._x, self._y] = (' ', self._color, tcod.BKGND_NONE)
+
+    def __repr__(self):
+        return '<gEntity {}>'.format(self.eclass)
 
