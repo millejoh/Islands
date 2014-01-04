@@ -137,14 +137,14 @@ class Console(object):
 
     def get_char_background(self, x, y):
         return tcod.console_get_char_background(self._c, x, y)
-    
+
     def put_cell(self, x, y, sym, flag=tcod.BKGND_NONE):
         tcod.console_put_char(self._c, x, y, sym, flag)
 
     def fill_char(self, char, tlx, tly, brx, bry):
         for x in range(tlx, brx):
             for y in range(tly, bry):
-                self[x,y] = char
+                self[x, y] = char
 
     def write(self, x, y, fmt):
         tcod.console_print(self._c, x, y, fmt)
@@ -152,7 +152,17 @@ class Console(object):
     def write_rect(self, x, y, w, h, fmt):
         tcod.console_print_rect(self._c, x, y, w, h, fmt)
 
-    def get_text_height(self, x, y, w, h, fmt):
+    def get_text_height(self, x: int, y: int, w: int, h: int,
+                        fmt: str):
+        """Return the expected height of the autowrapped string `fmt` without
+        actually drawing the screen to the console.
+
+        Parameters
+        ----------
+        x, y : Upper left coordinate of text box.
+        w, h : Width and height of text box.
+        fmt : Format string to be printed in the text box.
+        """
         return tcod.console_get_height_rect(self._c, x, y, w, h, fmt)
 
     def draw_rect(self, x, y, w, h, clear=False, flag=tcod.BKGND_NONE):

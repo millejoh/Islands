@@ -6,6 +6,7 @@ to learn a language (and library) to me.
 
 import tcod.console as tc
 import tcod
+from collections import namedtuple
 from tcod.events import *
 from math import floor
 
@@ -79,7 +80,6 @@ def screen_to_win_coord(window, coord):
     win_y = coord[1] - window.tly
 
     return win_x, win_y
-
 
 def rectangle_overlaps_p(rect1, rect2):
     """Do the two rectangles <rect1> and <rect2> overlap?
@@ -486,7 +486,30 @@ class Window(tc.Console):
             win.touching.remove(self)
         self.touching = []
 
-    def on_upper_window_border(self, x, y):
+    def on_border(self, x: int, y: int):
+        """True if the window coordinate (x, y) are on the window border.
+
+        Parameters
+        ----------
+        x : Window X coordinate (i.e., 0 == upper left corner of window).
+        y : Window Y coordinate.
+
+        """
+
+        return ((winx == 0) or (winy == 0) or
+                (winx == (self.width - 1)) or
+                (winy == (self.height - 1)))
+
+    def on_upper_window_border(self, x: int, y: int):
+        """True if window coordinate (x, y) is at the window's upper border.
+
+        Parameters
+        ----------
+        x : Window x coordinate (i.e., 0 == upper left corner of window).
+        y : Window y coordinate.
+
+        """
+
         return y == 0 and x > 0 and x < (tc.R.screen_width() - self.width)
 
     def move_window(self, tlx, tly):
@@ -689,6 +712,35 @@ class Window(tc.Console):
                                "Br(x,y) = ({0}, {1})".format(brx, bry))
             root.flush()
 
+    def draw_string(self, string, x, y, fg=None, bg=None, align='left'):
+        """Draw the string STR on the window object WIN at position X,Y. The string
+        STR can contain colour-changing directives - see the
+        documentation for {defun dormouse:make-coloured-string} for
+        details.
+
+        Parameters
+        ----------
+        string : A string which may contain formatting directives (see below).
+
+        x, y : Coordinates where the string should be printed, relative
+               to the top left corner of WIN. If the coordinates are
+               negative then they are taken as relative to the bottom
+               right corner of WIN. If the coordinates are :CENTRE then
+               the start of the string is taken as the centre of the
+               window.
+
+        fg, bg : Foreground and background colours for the string.
+
+        align : One of `'left'`, `'right'` or `'center'`. If alignment
+                is `'right'`, the string is drawn so that its last
+                character is located at X, Y; if `'centre'` so that the
+                middle character is at X, Y.
+
+        Examples
+        --------
+        window.draw_string_at(`"Hello {blue}world!{/}"` 1 1 :fg :green)
+
+        """
 
 class GhostWindow(Window):
     """Window that cannot be interacted with. Although it may be raised to the
@@ -702,6 +754,132 @@ class GhostWindow(Window):
 
 class BackgroundWindow(Window):
     pass
+
+
+ListItem = namedtuple('ListItem', ['str', 'item', 'hotkey'])
+
+
+class ListWindow(Window):
+    def __init__(self):
+        """Window that displays a list of strings, which can be scrolled.
+
+Up and down arrows move the cursor up and down the list.
+
+Page-up and page-down keys move the cursor a page at a time.
+
+Home and end keys move the cursor to the first and last item in the list.
+
+Left clicking on an item in the list, moves the cursor to that item.
+
+Pressing a 'hotkey' associated with an item, moves the cursor to that item.
+
+Left and right clicks on the lower border of the window move the display
+down or up a page at a time.
+
+The enter key selects the item under the cursor.
+"""
+        self.items = []  # Better as a deque?
+        self.offset = 0
+        self.cursor = 0
+        self.use_borders = False
+        self.select_function = None
+
+    def add_item(self, item, string, hotkey=None, prepend=False):
+        if prepend:
+            self.insert(0, item)
+        else:
+            self.items.append(ListItem(string, item, hotkey))
+
+    def clear_items(self):
+        self.items, self.offset = [], 0
+        self.move_cursor_to(0)
+
+    def item_line_cnt(self, item):
+        """Calculate the number of lines needed to display ListItem `item`.
+
+        """
+        if self.framed_p:
+            return self.get_text_height(1, 1, self.width-5,
+                                        self.height-1, item.str)
+        else:
+            return self.get_text_height(0, 0, self.width-3,
+                                        self.height, item.str)
+
+    @property
+    def all_items_line_cnt(self):
+        """Calculate the total number of lines needed to display the contents
+        of the ListWindow.
+
+        """
+        return sum(item_line_cnt(item) for item in self.items)
+
+    def item_at(self, x: int, y: int):
+        """Return ListItem (if any) at window coordinate (`x`, `y`).
+
+        Parameters
+        ----------
+        x : Window x coordinate (0 == upper left corner of window).
+        y : Window y coordinate.
+
+        """
+        offset = self.offset + (winy-1)
+        if self.on_border(x, y):
+            return None
+        elif offset < 0:
+            return None
+        elif offset > self.item_lines_cnt():
+            return None
+        else:
+            return self.items[offset]
+
+    def item_at_cursor(self):
+        """
+        """
+
+        return self.items[self.cursor]
+
+    @property
+    def page_length(self):
+        if self.use_borders:
+            return self.height
+        else:
+            return self.height - 2
+
+    def prepare(self):
+        pagelen = self.page_length
+        linecnt = self.all_items_line_cnt
+
+        if pagelen > self.all_items_line_cnt:
+            self.offset = 0
+        self.cursor = clamp(0, linecnt, self.cursor)
+        if self.cursor < self.offset:
+            self.offset = self.cursor
+        if self.cursor >= pagelen + self.offset:
+            self.offset = self.cursor - pagelen - 1
+        offset = self.offset
+
+        # This needs to account for items that are
+        # wrapped, i.e. printed over multiple lines.
+        border_offset = 0 if self.use_borders else 1
+        for i in range(offset, offset+pagelen-1):
+            if 0 <= i <= len(self.items) - 1 and self.item[i]:
+                self.draw_item_at(self.items[i],
+                                  border_offset,
+                                  i - offset + border_offset,
+                                  i == self.cursor)
+        super().prepare()
+
+    def draw_item_at(self, item, x, y, cursorp):
+        pagewidth = self.width - 0 if self.use_borders else 2
+
+    def move_cursor_to(self, idx: int):
+        """Move ListWindow cursor to new index <idx>.
+
+        """
+        old_cursor = self.cursor
+        self.cursor = clamp(0, max((0, len(self.items)-1)), idx)
+        if old_cursor != self.cursor and self.item_at_cursor():
+            self.cursor_moved_to_item(self.item_at_cursor())
 
 
 class WindowTheme(object):
@@ -726,8 +904,6 @@ class WindowTheme(object):
 
 
 class Viewport(Window):
-    """
-    """
 
     def __init__(self, map_width, map_height, view_tlx, view_tly, **keys):
         """
