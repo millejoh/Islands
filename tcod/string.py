@@ -2,7 +2,9 @@
 """
 
 import tcod
+import re
 
+MARKUP = r'(?P<MARKUP>{[a-zA-Z]+}.*
 def make_colored_string(string, dialog=False, window=None):
     
 def draw_string(win, x, y, string, dialog=False, background_flag = tcod.BKGND_SET):
