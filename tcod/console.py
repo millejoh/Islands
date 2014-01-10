@@ -2,7 +2,8 @@
 import os.path
 from threading import Thread
 import tcod
-
+from collections import namedtuple
+from tcod.string import make_colored_string
 
 def sys_get_events():
     mouse = tcod.Mouse()
@@ -21,20 +22,7 @@ def sys_get_events():
     return events
 
 
-# Make a subclass of Tuple?
-class ConsoleCell(object):
-    """Represent a console cell as a 3-element tuple: symbol (or character),
-    foreground color, and background color."""
-    def __init__(self, symbol=' ', foreground=None, background=None):
-        self.symbol = symbol
-        self.foreground = foreground
-        self.background = background
-
-    def __repr__(self):
-        return 'ConsoleCell({0},{1},{2})'.format(self.symbol,
-                                                 self.foreground,
-                                                 self.background)
-
+ConsoleCell = namedtuple('ConsoleCell', ['symbol', 'foreground', 'background'])
 
 class Console(object):
     def __init__(self, width, height):
@@ -148,6 +136,11 @@ class Console(object):
 
     def write(self, x, y, fmt):
         tcod.console_print(self._c, x, y, fmt)
+
+    def draw_string(self, x, y, fmt, background_flag=tcod.BKGND_SET,
+                    align=tcod.LEFT):
+        xstr = make_colored_string(string)
+        tcod.console_print_ex(self._c, x, y, background_flag, align, xstr)
 
     def write_rect(self, x, y, w, h, fmt):
         tcod.console_print_rect(self._c, x, y, w, h, fmt)

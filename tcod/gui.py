@@ -5,6 +5,7 @@ to learn a language (and library) to me.
 """
 
 import tcod.console as tc
+from tcod.console import R
 import tcod
 from collections import namedtuple
 from tcod.events import *
@@ -303,17 +304,17 @@ def gui_loop(events):
     if FOCUS_CHANGED:
         LAST_TOPWIN = TOPWIN
 
-    tcod.console_print(tcod.root_console, 0, 0,
-                       "Event(s) {0} detected.".format(events))
-    tcod.console_print(tcod.root_console, 0, 1,
-                       "Mouse position, lbutton = ({0}, {1}, {2})".format(MOUSE_X,
-                                                                          MOUSE_Y,
-                                                                          CURRENT_MOUSE_EVENT.lbutton if CURRENT_MOUSE_EVENT else None))
+        
+    R.active_root.write(0, 0,
+                        "Event(s) {0} detected.".format(events))
+    R.active_root.write(0, 1,
+                        "Mouse position, lbutton = ({0}, {1}, {2})".format(MOUSE_X, MOUSE_Y,
+                                                                           CURRENT_MOUSE_EVENT.lbutton if CURRENT_MOUSE_EVENT else None))
 
-    tcod.console_print(tcod.root_console, 0, 2,
-                       "FPS = {0}".format(tcod.sys_get_fps()))
-    tcod.console_print(tcod.root_console, 0, 3,
-                       "Top window = {0}".format(TOPWIN))
+    R.active_root.write(0, 2,
+                        "FPS = {0}".format(tcod.sys_get_fps()))
+    R.active_root.write(0, 3,
+                        "Top window = {0}".format(TOPWIN))
     process_windows()
 
 # ======================== #
@@ -326,7 +327,7 @@ def destroy_all_windows():
 
 
 class Window(tc.Console):
-    def __init__(self, tlx, tly, width, height, hidden=False,
+    def __init__(self, tlx=0, tly=0, width=5, height=5, hidden=False,
                  parent=None, title="", framed=False):
         super().__init__(width, height)
         self.tlx = tlx
@@ -496,9 +497,9 @@ class Window(tc.Console):
 
         """
 
-        return ((winx == 0) or (winy == 0) or
-                (winx == (self.width - 1)) or
-                (winy == (self.height - 1)))
+        return ((x == 0) or (y == 0) or
+                (x == (self.width - 1)) or
+                (y == (self.height - 1)))
 
     def on_upper_window_border(self, x: int, y: int):
         """True if window coordinate (x, y) is at the window's upper border.
@@ -760,24 +761,21 @@ ListItem = namedtuple('ListItem', ['str', 'item', 'hotkey'])
 
 
 class ListWindow(Window):
-    def __init__(self):
+    def __init__(self, **keys):
         """Window that displays a list of strings, which can be scrolled.
 
-Up and down arrows move the cursor up and down the list.
+        Up and down arrows move the cursor up and down the list. Page-up
+        and page-down keys move the cursor a page at a time. Home and
+        end keys move the cursor to the first and last item in the
+        list. Left clicking on an item in the list, moves the cursor to
+        that item. Pressing a 'hotkey' associated with an item, moves
+        the cursor to that item. Left and right clicks on the lower
+        border of the window move the display down or up a page at a
+        time.
 
-Page-up and page-down keys move the cursor a page at a time.
-
-Home and end keys move the cursor to the first and last item in the list.
-
-Left clicking on an item in the list, moves the cursor to that item.
-
-Pressing a 'hotkey' associated with an item, moves the cursor to that item.
-
-Left and right clicks on the lower border of the window move the display
-down or up a page at a time.
-
-The enter key selects the item under the cursor.
-"""
+        The enter key selects the item under the cursor.
+        """
+        super().__init__(**keys)
         self.items = []  # Better as a deque?
         self.offset = 0
         self.cursor = 0
@@ -811,7 +809,7 @@ The enter key selects the item under the cursor.
         of the ListWindow.
 
         """
-        return sum(item_line_cnt(item) for item in self.items)
+        return sum(self.item_line_cnt(item) for item in self.items)
 
     def item_at(self, x: int, y: int):
         """Return ListItem (if any) at window coordinate (`x`, `y`).
@@ -822,12 +820,12 @@ The enter key selects the item under the cursor.
         y : Window y coordinate.
 
         """
-        offset = self.offset + (winy-1)
+        offset = self.offset + (y-1)
         if self.on_border(x, y):
             return None
         elif offset < 0:
             return None
-        elif offset > self.item_lines_cnt():
+        elif offset >= self.all_items_line_cnt:
             return None
         else:
             return self.items[offset]
@@ -846,6 +844,7 @@ The enter key selects the item under the cursor.
             return self.height - 2
 
     def prepare(self):
+        super().prepare()
         pagelen = self.page_length
         linecnt = self.all_items_line_cnt
 
@@ -861,16 +860,19 @@ The enter key selects the item under the cursor.
         # This needs to account for items that are
         # wrapped, i.e. printed over multiple lines.
         border_offset = 0 if self.use_borders else 1
-        for i in range(offset, offset+pagelen-1):
-            if 0 <= i <= len(self.items) - 1 and self.item[i]:
-                self.draw_item_at(self.items[i],
-                                  border_offset,
-                                  i - offset + border_offset,
-                                  i == self.cursor)
-        super().prepare()
+        last_item_idx = len(self.items)
+        last_view_idx = offset+pagelen-1
+        last_idx =  last_view_idx if last_view_idx < last_item_idx \
+          else last_item_idx
+        for i in range(offset,last_idx):
+                self.draw_item(self.items[i],
+                               border_offset,
+                               i - offset + border_offset,
+                               i == self.cursor)
 
-    def draw_item_at(self, item, x, y, cursorp):
+    def draw_item(self, item, x, y, cursorp):
         pagewidth = self.width - 0 if self.use_borders else 2
+        self.draw_string(x, y, item.str)
 
     def move_cursor_to(self, idx: int):
         """Move ListWindow cursor to new index <idx>.

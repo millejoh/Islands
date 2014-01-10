@@ -2,7 +2,7 @@
 """
 
 import tcod
-from tcod.color import decompose_color
+from tcod.color import decompose_color, string_to_colornum
 import re
 from collections import namedtuple
 
@@ -11,8 +11,14 @@ MARKUP = r'(?P<COLOR>\{[a-zA-Z:,]+?\})'
 CLICK = r'(?P<CLICK>\{click:[a-zA-Z]+\})'
 ACCENT = r"""(?P<ACCENT>\{[:'`^0][a-zA-Z]\})"""
 TERMINATOR = r'(?P<MU_TERM>\{/\})'
-
 master_pat = re.compile('|'.join([TEXT, MARKUP, ACCENT, CLICK, TERMINATOR]))
+
+FG_COLOR = r'(?P<FG_COLOR>fg:|foreground:)'
+BG_COLOR = r'(?P<BG_COLOR>bg:|background:)'
+COLOR = r'(?P<COLOR>[a-zA-Z]+)'
+color_pat = re.compile('|'.join([FG_COLOR, BG_COLOR, COLOR]))
+
+
 
 Token = namedtuple('Token', ['type', 'value'])
 
@@ -22,33 +28,28 @@ def next_token(text, pat=master_pat):
     for m in iter(scanner.match, None):
         yield Token(m.lastgroup, m.group())
 
-FG_COLOR = r'(?P<FG_COLOR>fg:|foreground:)'
-BG_COLOR = r'(?P<BG_COLOR>bg:|background:)'
-COLOR = r'(?P<COLOR>[a-zA-Z]+)'
-color_pat = re.compile('|'.join([FG_COLOR, BG_COLOR, COLOR]))
-
-
 def process_color_directive(fmt):
     toks = [tok for tok in next_token(fmt[1:-1], color_pat)]
-    if toks[0].lastgroup == 'FG_COLOR':
+    if toks[0].type == 'FG_COLOR':
         return color_to_control_string(string_to_colornum(toks[1].value),
-                                       FALSE)
-    elif toks[0].lastgroup == 'BG_COLOR':
+                                       False)
+    elif toks[0].type == 'BG_COLOR':
         return color_to_control_string(string_to_colornum(toks[1].value),
-                                       TRUE)
+                                       True)
     else:
         return color_to_control_string(string_to_colornum(toks[0].value),
-                                       FALSE)
+                                       False)
 
 
 def make_colored_string(string, dialog=False, window=None):
     s = []
     for tok in next_token(string, master_pat):
-        if tok.type != 'MU_TERM':
-            if tok.type == 'COLOR':
-                s.append(process_color_directive(tok.value))
-            else:
-                s.append(tok.value)
+        if tok.type == 'COLOR':
+            s.append(process_color_directive(tok.value))
+        elif tok.type == 'MU_TERM':
+            s.append('{:c}'.format(tcod.COLCTRL_STOP))
+        else:
+            s.append(tok.value)
     return ''.join(s)
 
 
