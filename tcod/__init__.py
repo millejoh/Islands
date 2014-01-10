@@ -37,4 +37,4 @@ key_dispatch_table = {}
 import tcod.console as console
 import tcod.gui as gui
 
-__all__ = ['console', 'tools', 'gui', 'libtcodpu']
+__all__ = ['console', 'tools', 'gui', 'libtcodpy']
