@@ -22,12 +22,23 @@ def next_token(text, pat=master_pat):
     for m in iter(scanner.match, None):
         yield Token(m.lastgroup, m.group())
 
-FG_COLOR = r'fg:[a-zA-Z]+|foreground:[a-zA-Z]+|[^:]'
-BG_COLOR = r'bg:[a-ZA-Z]+|background:[a-zA-Z]+'
+FG_COLOR = r'(?P<FG_COLOR>fg:|foreground:)'
+BG_COLOR = r'(?P<BG_COLOR>bg:|background:)'
+COLOR = r'(?P<COLOR>[a-zA-Z]+)'
+color_pat = re.compile('|'.join([FG_COLOR, BG_COLOR, COLOR]))
 
 
-def process_color_directive(col_fmt):
-    pass
+def process_color_directive(fmt):
+    toks = [tok for tok in next_token(fmt[1:-1], color_pat)]
+    if toks[0].lastgroup == 'FG_COLOR':
+        return color_to_control_string(string_to_colornum(toks[1].value),
+                                       FALSE)
+    elif toks[0].lastgroup == 'BG_COLOR':
+        return color_to_control_string(string_to_colornum(toks[1].value),
+                                       TRUE)
+    else:
+        return color_to_control_string(string_to_colornum(toks[0].value),
+                                       FALSE)
 
 
 def make_colored_string(string, dialog=False, window=None):
@@ -52,4 +63,5 @@ def color_to_control_string(color, bg_color_p=False):
 
 
 def draw_string(win, x, y, string, dialog=False, background_flag = tcod.BKGND_SET):
-    xstr = colorize_string(string, dialog, window=win)
+    xstr = make_colored_string(string, dialog, window=win)
+    return xstr
