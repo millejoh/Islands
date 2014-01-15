@@ -236,12 +236,12 @@ def send_mouse_click_event(window, event):
                                       mouse_state=event,
                                       window=window,
                                       double_click=double_click)
-        window.send_to_window(LAST_MOUSE_CLICK)
+        window.on_mouse_event(LAST_MOUSE_CLICK)
 
 
 def send_key_event(window, key, x, y):
     kevent = KeyEvent(key, window=window, winx=x, winy=y)
-    window.send_to_window(kevent)
+    window.on_key_event(kevent)
 
 
 def handle_drag_event(mouse):
@@ -269,7 +269,7 @@ def handle_drag_event(mouse):
                 oy == (TOPWIN.tly + TOPWIN.height - 1):
                 TOPWIN.mouse_resize(mouse)
             else:
-                TOPWIN.send_to_window(MouseDragEvent(winx=mouse.cx - TOPWIN.tlx,
+                TOPWIN.on_mouse_event(MouseDragEvent(winx=mouse.cx - TOPWIN.tlx,
                                                      winy=mouse.cy - TOPWIN.tly,
                                                      mouse_state=mouse))
 
@@ -304,17 +304,6 @@ def gui_loop(events):
     if FOCUS_CHANGED:
         LAST_TOPWIN = TOPWIN
 
-        
-    R.active_root.write(0, 0,
-                        "Event(s) {0} detected.".format(events))
-    R.active_root.write(0, 1,
-                        "Mouse position, lbutton = ({0}, {1}, {2})".format(MOUSE_X, MOUSE_Y,
-                                                                           CURRENT_MOUSE_EVENT.lbutton if CURRENT_MOUSE_EVENT else None))
-
-    R.active_root.write(0, 2,
-                        "FPS = {0}".format(tcod.sys_get_fps()))
-    R.active_root.write(0, 3,
-                        "Top window = {0}".format(TOPWIN))
     process_windows()
 
 # ======================== #
@@ -443,10 +432,11 @@ class Window(tc.Console):
     def window_did_change(self):
         self.changed_p = True
 
-    def send_to_window(self, event):
-        if self.hidden_p or self.event_handler is None:
-            return
-        return self.event_handler(event)
+    def on_mouse_event(self, event):
+        pass
+
+    def on_key_event(self, event):
+        pass
 
     def dirty_window(self):
         tlx, tly = self.tlx, self.tly
@@ -709,39 +699,8 @@ class Window(tc.Console):
                                   0, 0, 1.0, 1.0)
                 # Copy win to root
                 self.copy_to_console(root)
-            tcod.console_print(0, 0, 0,
-                               "Br(x,y) = ({0}, {1})".format(brx, bry))
             root.flush()
 
-    def draw_string(self, string, x, y, fg=None, bg=None, align='left'):
-        """Draw the string STR on the window object WIN at position X,Y. The string
-        STR can contain colour-changing directives - see the
-        documentation for {defun dormouse:make-coloured-string} for
-        details.
-
-        Parameters
-        ----------
-        string : A string which may contain formatting directives (see below).
-
-        x, y : Coordinates where the string should be printed, relative
-               to the top left corner of WIN. If the coordinates are
-               negative then they are taken as relative to the bottom
-               right corner of WIN. If the coordinates are :CENTRE then
-               the start of the string is taken as the centre of the
-               window.
-
-        fg, bg : Foreground and background colours for the string.
-
-        align : One of `'left'`, `'right'` or `'center'`. If alignment
-                is `'right'`, the string is drawn so that its last
-                character is located at X, Y; if `'centre'` so that the
-                middle character is at X, Y.
-
-        Examples
-        --------
-        window.draw_string_at(`"Hello {blue}world!{/}"` 1 1 :fg :green)
-
-        """
 
 class GhostWindow(Window):
     """Window that cannot be interacted with. Although it may be raised to the
@@ -761,7 +720,7 @@ ListItem = namedtuple('ListItem', ['str', 'item', 'hotkey'])
 
 
 class ListWindow(Window):
-    def __init__(self, **keys):
+    def __init__(self, wrap_items=False, **keys):
         """Window that displays a list of strings, which can be scrolled.
 
         Up and down arrows move the cursor up and down the list. Page-up
@@ -781,6 +740,7 @@ class ListWindow(Window):
         self.cursor = 0
         self.use_borders = False
         self.select_function = None
+        self.wrap_items = wrap_items
 
     def add_item(self, item, string, hotkey=None, prepend=False):
         if prepend:
@@ -864,15 +824,28 @@ class ListWindow(Window):
         last_view_idx = offset+pagelen-1
         last_idx =  last_view_idx if last_view_idx < last_item_idx \
           else last_item_idx
+        print_offset = 0
         for i in range(offset,last_idx):
-                self.draw_item(self.items[i],
-                               border_offset,
-                               i - offset + border_offset,
-                               i == self.cursor)
+            if i+print_offset+border_offset > pagelen:
+                break
+            print_offset += self.draw_item(self.items[i],
+                                     border_offset,
+                                     i + print_offset + border_offset,
+                                     i == self.cursor)
 
     def draw_item(self, item, x, y, cursorp):
-        pagewidth = self.width - 0 if self.use_borders else 2
-        self.draw_string(x, y, item.str)
+        pagewidth = self.width - (0 if self.use_borders else 2)
+        if self.wrap_items:
+            border_offset = 0 if self.use_borders else 1
+            self.write_rect(x, y, pagewidth, self.height-y-border_offset, item.str)
+            return self.get_text_height(x, y, pagewidth, self.height-border_offset,
+                                        item.str) - 1
+        else:
+            if len(item.str) < pagewidth:
+                self.draw_string(x, y, item.str)
+            else:
+                self.draw_string(x, y, item.str[:pagewidth])
+            return 0
 
     def move_cursor_to(self, idx: int):
         """Move ListWindow cursor to new index <idx>.
@@ -884,6 +857,15 @@ class ListWindow(Window):
             self.cursor_moved_to_item(self.item_at_cursor())
 
 
+class LogWindow(ListWindow):
+    def __init__(self, show_tail=False, max_messages=50, **kwargs):
+        super().__init__(**kwargs)
+        self.show_tail = show_tail
+        self.max_messages = max_messages
+
+    
+    
+        
 class WindowTheme(object):
     def __init__(self, fore, back, fore_highlight, back_highlight,
                  dialog_button_fore, dialog_button_back,

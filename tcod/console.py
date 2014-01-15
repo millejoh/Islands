@@ -135,15 +135,50 @@ class Console(object):
                 self[x, y] = char
 
     def write(self, x, y, fmt):
-        tcod.console_print(self._c, x, y, fmt)
+        xstr = make_colored_string(fmt)
+        tcod.console_print(self._c, x, y, xstr)
 
-    def draw_string(self, x, y, fmt, background_flag=tcod.BKGND_SET,
+    def draw_string(self, x, y, fmt, bg_color=None,
+                    background_flag=tcod.BKGND_SET,
                     align=tcod.LEFT):
-        xstr = make_colored_string(string)
+        """Draw the string STR on the window object WIN at position X,Y. The string
+        STR can contain color-changing directives - see the
+        documentation for {defun dormouse:make-coloured-string} for
+        details.
+
+        Parameters
+        ----------
+        string : A string which may contain formatting directives (see below).
+
+        x, y : Coordinates where the string should be printed, relative
+               to the top left corner of WIN. If the coordinates are
+               negative then they are taken as relative to the bottom
+               right corner of WIN. If the coordinates are :CENTRE then
+               the start of the string is taken as the centre of the
+               window.
+
+        fg, bg : Foreground and background colours for the string.
+
+        align : One of `'left'`, `'right'` or `'center'`. If alignment
+                is `'right'`, the string is drawn so that its last
+                character is located at X, Y; if `'centre'` so that the
+                middle character is at X, Y.
+
+        Examples
+        --------
+        window.draw_string_at(`"Hello {blue}world!{/}"` 1 1 :fg :green)
+
+        """
+        xstr = make_colored_string(fmt)
+        prev_bg_color = self.background
+        if bg_color is not None: # Hear the cries for a context manager!
+            self.background = bg_color
         tcod.console_print_ex(self._c, x, y, background_flag, align, xstr)
+        self.background = prev_bg_color
 
     def write_rect(self, x, y, w, h, fmt):
-        tcod.console_print_rect(self._c, x, y, w, h, fmt)
+        xstr = make_colored_string(fmt)
+        tcod.console_print_rect(self._c, x, y, w, h, xstr)
 
     def get_text_height(self, x: int, y: int, w: int, h: int,
                         fmt: str):
