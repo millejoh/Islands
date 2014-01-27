@@ -2,8 +2,10 @@
 import os.path
 from threading import Thread
 import tcod
+import tcod.color as color
 from collections import namedtuple
 from tcod.string import make_colored_string
+
 
 def sys_get_events():
     mouse = tcod.Mouse()
@@ -23,6 +25,7 @@ def sys_get_events():
 
 
 ConsoleCell = namedtuple('ConsoleCell', ['symbol', 'foreground', 'background'])
+
 
 class Console(object):
     def __init__(self, width, height):
@@ -58,6 +61,10 @@ class Console(object):
 
         if isinstance(cell, tuple) and len(cell) >= 3:
             symbol, foreground, background = cell
+            if isinstance(foreground, str):
+                foreground = color.string_to_colornum(foreground)
+            if isinstance(background, str):
+                background = color.string_to_colornum(background)
         elif cell is not tuple:
             symbol = cell
             foreground = self.get_char_foreground(x, y)

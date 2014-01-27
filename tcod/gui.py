@@ -82,6 +82,7 @@ def screen_to_win_coord(window, coord):
 
     return win_x, win_y
 
+
 def rectangle_overlaps_p(rect1, rect2):
     """Do the two rectangles <rect1> and <rect2> overlap?
 

@@ -70,3 +70,5 @@ def string_to_colornum(color):
     except:
         warn('Could not find color {0}, return white instead.'.format(color))
         return compose_color(*COLOR_TABLE['white'])
+
+    
