@@ -3,13 +3,13 @@ A simple GUI using the TCOD library. Very much inspired by cl-dormouse.
 One might even go so far as to say "stolen from." Seems like a good way
 to learn a language (and library) to me.
 """
-
-import tcod.console as tc
-from tcod.console import R
-import tcod
 from collections import namedtuple
-from tcod.events import *
 from math import floor
+
+import tcod
+import tcod.console as tc
+from tcod.events import MouseEvent, MouseDragEvent, KeyEvent
+
 
 AUTO_REDRAW = True
 OPAQUE = 1
@@ -896,8 +896,8 @@ class Viewport(Window):
 
         super().__init__(**keys)
         self.transparency = OPAQUE
-        self.mwidth = map_width
-        self.mheight = map_height
+        self.map_width = map_width
+        self.map_height = map_height
         self.map_console = tc.Console(map_width, map_height)
         self.view_tlx = view_tlx
         self.view_tly = view_tly
@@ -939,7 +939,7 @@ class Viewport(Window):
         of the viewport?
         """
 
-        return (-1 < x < self.mwidth) and (-1 < y < self.mheight)
+        return (-1 < x < self.map_width) and (-1 < y < self.map_height)
 
     def prepare(self):
         super().prepare()

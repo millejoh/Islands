@@ -1,6 +1,7 @@
 # Try to find libtcodpy
 import tcod
 from tcod.tools import Heightmap
+from tcod.gui import Viewport
 from pyDatalog import pyDatalog
 from uuid import uuid1
 import random as r
@@ -37,17 +38,20 @@ class Tile(object):
         pass
 
 
-class MapChunk(object):
-    def __init__(self, width, height, offset=[0, 0]):
+class MapChunk(Viewport):
+    def __init__(self, offset=[0, 0], **keys):
+        """
+        """
+        super().__init__(**keys)
+        mwidth, mheight = self.map_width, self.map_height
         self._offset = offset
-        self._width = width
-        self._height = height
         self.__rng = tcod.random_get_instance()
-        self.elevation = Heightmap(width, height)
+        self.elevation = Heightmap(mwidth, mheight)
         self.elevation.clear_map()
-        self.precipitation = Heightmap(width, height)
-        self.temperature = Heightmap(width, height)
-        self.terrain = np.zeros((width, height))
+        self.precipitation = Heightmap(mwidth, mheight)
+        self.temperature = Heightmap(mwidth, mheight)
+        self.terrain = np.zeros((mwidth, mheight))
+        self.draw_mode = 'elevations'
         self.props = []
         self.actors = []
 
@@ -70,25 +74,27 @@ class MapChunk(object):
             x, y = r.randint(sx, sx+width), r.randint(sy, sy+height)
             e.add_hill(x, y, radius, radius*radius)
 
-    def draw_terrain_region(self, rect, console):
-        ox, oy, w, h = rect
-        for i in range(w):
-            x = ox + i
-            for j in range(h):
-                y = oy + j
-                console[x,y] = (' ', tcod.white, biome_colors[self.terrain[x,y]])
+    def draw_terrain(self):
+        for x, y in np.ndinndex(*self.terrain.shape()):
+            self.map_console[x, y] = (' ', tcod.white, biome_colors[self.terrain[x,y]])
 
-    def draw_elevation_region(self, rect, console, as_color=True):
-        ox, oy, w, h = rect
-        for i in range(w):
-            x = ox + i
-            for j in range(h):
-                y = oy + j
-                if as_color:
-                    intensity = tcod.color_lerp(tcod.black, tcod.white,
-                                                self.elevation[x, y]/100.0)
-                    console[x, y] = (' ', tcod.white, intensity)
-                                
+    def draw_elevations(self, as_color=True):
+        for x, y in np.ndindex(*self.elevation.shape()):
+            if as_color:
+                intensity = tcod.color_lerp(tcod.black, tcod.white,
+                                            self.elevation[x, y]/100.0)
+            self.map_console[x, y] = (' ', tcod.white, intensity)
+
+    def prepare(self):
+        if self.draw_mode == 'elevations':
+            self.draw_elevations()
+        else:
+            self.draw_terrain()
+        super().prepare()
+
+    def on_key_event(self, event):
+        pass
+
 
 # With inspiration from Chapter 8.11 of Python Cookbook, 3rd Edition.
 
@@ -96,33 +102,39 @@ class DefaultStructure(object):
     _fields = {}
 
     def __init__(self, **kwargs):
-        """A class that eneralizes slot initialization of an object. Allows for specification of default values.
+        """A class that eneralizes slot initialization of an object. Allows
+        for specification of default values.
 
-        Simplify writing of __init__ methods by specifying a dictionary in the class slot _fields as is
-        similarly done in Chapter 8.11 of the Python Cookbook, 3rd Edition.
+        Simplify writing of __init__ methods by specifying a
+        dictionary in the class slot _fields as is similarly done in
+        Chapter 8.11 of the Python Cookbook, 3rd Edition.
 
-        _fields is a dictionary of slot names and default values. The new class only accepts keyword
-        arguments during object initialization (it's a feature, not a bug!).
+        _fields is a dictionary of slot names and default values. The
+        new class only accepts keyword arguments during object
+        initialization (it's a feature, not a bug!).
+
         """
-    
+
         for name in kwargs.keys():
             setattr(self, name, kwargs[name])
-            
+
         for name, value in self._fields.items():
             if not hasattr(self, name):
                 setattr(self, name, value)
 
-class gEntity(DefaultStructure):#, pyDatalog.Mixin):
-    _fields = {'x':0, 'y':0, 'z':0, 'eclass':'entity', 'char':' ', 'color':tcod.white}
+
+class gEntity(DefaultStructure):  # , pyDatalog.Mixin):
+    _fields = {'x': 0, 'y': 0, 'z': 0, 'eclass': 'entity',
+               'char': ' ', 'color': tcod.white}
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self._id = uuid1()
-        
+
     @property
     def pos(self):
         return (self.x, self.y, self.z)
-    
+
     def draw(self, console):
         console[self._x, self._y] = (self._char, self._color, tcod.BKGND_NONE)
 
@@ -131,4 +143,3 @@ class gEntity(DefaultStructure):#, pyDatalog.Mixin):
 
     def __repr__(self):
         return '<gEntity {}>'.format(self.eclass)
-
