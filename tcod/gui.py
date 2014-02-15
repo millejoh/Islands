@@ -279,6 +279,7 @@ def gui_loop(events):
     global CURRENT_MOUSE_EVENT, MOUSE_X, MOUSE_Y, TOPWIN, LAST_TOPWIN, FOCUS_CHANGED 
     # Go through any (all) events in the queue
     CURRENT_MOUSE_EVENT = tcod.mouse_get_status()
+    FOCUS_CHANGED = False
     for (event_type, event) in events:
         if isinstance(event, tcod.Mouse):
             CURRENT_MOUSE_EVENT = event
@@ -290,7 +291,7 @@ def gui_loop(events):
                 TOPWIN = window_with_mouse_focus()
                 FOCUS_CHANGED = TOPWIN != LAST_TOPWIN
                 send_mouse_click_event(TOPWIN, event)
-        if isinstance(event, tcod.Key):
+        elif isinstance(event, tcod.Key):
             TOPWIN = window_with_key_focus()
             if TOPWIN:
                 send_key_event(TOPWIN, event,
@@ -742,6 +743,9 @@ class ListWindow(Window):
         self.use_borders = False
         self.select_function = None
         self.wrap_items = wrap_items
+
+    def __repr__(self):
+        return "ListWindow({w.tlx},{w.tly},{w.width},{w.height},title='{w.title}')".format(w=self)
 
     def add_item(self, item, string, hotkey=None, prepend=False):
         if prepend:

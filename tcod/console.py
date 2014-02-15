@@ -48,9 +48,9 @@ class Console(object):
         if x > self.width or x < 0 or y > self.height or y < 0:
             raise IndexError('Attempt to access cell ({0}, {1}), which is out of range. Console size is ({2}, {3}).'.format(x, y, self.width, self.height))
 
-        return (chr(tcod.console_get_char(self._c, x, y)),
-                tcod.console_get_char_foreground(self._c, x, y),
-                tcod.console_get_char_background(self._c, x, y))
+        return ConsoleCell(chr(tcod.console_get_char(self._c, x, y)),
+                           tcod.console_get_char_foreground(self._c, x, y),
+                           tcod.console_get_char_background(self._c, x, y))
 
     def __setitem__(self, index, cell):
         if isinstance(index, slice):

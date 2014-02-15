@@ -52,8 +52,8 @@ class MapChunk(Viewport):
         self.temperature = Heightmap(mwidth, mheight)
         self.terrain = np.zeros((mwidth, mheight))
         self.draw_mode = 'elevations'
-        self.props = []
-        self.actors = []
+        self.props = {}
+        self.actors = {}
 
     def __del__(self):
         tcod.random_delete(self.__rng)
@@ -79,21 +79,39 @@ class MapChunk(Viewport):
             self.map_console[x, y] = (' ', tcod.white, biome_colors[self.terrain[x,y]])
 
     def draw_elevations(self, as_color=True):
-        for x, y in np.ndindex(*self.elevation.shape()):
+        for x, y in np.ndindex(*self.elevation.as_ndarray().shape):
             if as_color:
                 intensity = tcod.color_lerp(tcod.black, tcod.white,
                                             self.elevation[x, y]/100.0)
             self.map_console[x, y] = (' ', tcod.white, intensity)
 
-    def prepare(self):
+    def on_update(self):
         if self.draw_mode == 'elevations':
             self.draw_elevations()
-        else:
-            self.draw_terrain()
-        super().prepare()
+        for prop in self.props.values():
+            prop.draw(self.map_console)
+        for actor in self.actors.values():
+            actor.draw(self.map_console)
 
     def on_key_event(self, event):
-        pass
+        key = event.key_info.vk
+        p = self.actors['Player']
+        if p:
+            if key == tcod.KEY_UP:
+                p.y = 0 if p.y == 0 else p.y-1
+            elif key == tcod.KEY_DOWN:
+                p.y = self.map_height if p.y == self.map_height else p.y+1
+            elif key == tcod.KEY_LEFT:
+                p.x = 0 if p.x == 0 else p.x-1
+            elif key == tcod.KEY_RIGHT:
+                p.y = self.map_width if p.x == self.map_width else p.x+1
+        self.on_update()
+
+    def add_actor(self, actor_obj):
+        self.actors[actor_obj.name] = actor_obj
+
+    def add_prop(self, prop_obj):
+        self.props[prop_obj.name] = prop_obj
 
 
 # With inspiration from Chapter 8.11 of Python Cookbook, 3rd Edition.
@@ -125,7 +143,8 @@ class DefaultStructure(object):
 
 class gEntity(DefaultStructure):  # , pyDatalog.Mixin):
     _fields = {'x': 0, 'y': 0, 'z': 0, 'eclass': 'entity',
-               'char': ' ', 'color': tcod.white}
+               'char': ' ', 'color': tcod.white,
+               'name':'generic entity'}
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -136,10 +155,12 @@ class gEntity(DefaultStructure):  # , pyDatalog.Mixin):
         return (self.x, self.y, self.z)
 
     def draw(self, console):
-        console[self._x, self._y] = (self._char, self._color, tcod.BKGND_NONE)
+        back = console[self.x, self.y].background
+        console[self.x, self.y] = (self.char, self.color, back)
 
     def clear(self, console):
-        console[self._x, self._y] = (' ', self._color, tcod.BKGND_NONE)
+        back = console[self.x, self.y].background
+        console[self.x, self.y] = (' ', self.color, back)
 
     def __repr__(self):
         return '<gEntity {}>'.format(self.eclass)
