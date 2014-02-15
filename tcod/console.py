@@ -323,10 +323,10 @@ class RootConsole(Thread, Console):
         tcod.sys_set_fps(self.max_fps)
 
         while (not self.end_game) and (not tcod.console_is_window_closed()):
-            events = sys_get_events()
+            #events = sys_get_events()
             #self.handle_keys(key)
             tcod.console_clear(tcod.root_console)
-            tcod.gui.gui_loop(events)
+            tcod.gui.gui_loop()
             tcod.console_flush()
 
 R = RootConsole

@@ -274,29 +274,36 @@ def handle_drag_event(mouse):
                                                      winy=mouse.cy - TOPWIN.tly,
                                                      mouse_state=mouse))
 
+def check_for_event(mask=tcod.EVENT_ANY):
+    key = tcod.Key()
+    mouse = tcod.Mouse()
+    event_type = tcod.sys_check_for_event(mask, key, mouse)
+    return event_type, mouse, key
 
-def gui_loop(events):
+
+def gui_loop():
     global CURRENT_MOUSE_EVENT, MOUSE_X, MOUSE_Y, TOPWIN, LAST_TOPWIN, FOCUS_CHANGED 
     # Go through any (all) events in the queue
     CURRENT_MOUSE_EVENT = tcod.mouse_get_status()
     FOCUS_CHANGED = False
-    for (event_type, event) in events:
-        if isinstance(event, tcod.Mouse):
-            CURRENT_MOUSE_EVENT = event
-            MOUSE_X, MOUSE_Y = event.cx, event.cy
-            if event_type == tcod.EVENT_MOUSE_MOVE:
-                FOCUS_CHANGED = window_with_mouse_focus() != LAST_TOPWIN
-                send_mouse_move_event(window_with_mouse_focus(), event)
-            elif event_type in (tcod.EVENT_MOUSE_PRESS, tcod.EVENT_MOUSE_RELEASE):
-                TOPWIN = window_with_mouse_focus()
-                FOCUS_CHANGED = TOPWIN != LAST_TOPWIN
-                send_mouse_click_event(TOPWIN, event)
-        elif isinstance(event, tcod.Key):
-            TOPWIN = window_with_key_focus()
-            if TOPWIN:
-                send_key_event(TOPWIN, event,
-                               MOUSE_X - TOPWIN.tlx,
-                               MOUSE_Y - TOPWIN.tly)
+    event_type, mouse, key = check_for_event()
+    #for (event_type, event) in events:
+    if event_type & tcod.EVENT_MOUSE:
+        CURRENT_MOUSE_EVENT = mouse
+        MOUSE_X, MOUSE_Y = mouse.cx, mouse.cy
+        if event_type == tcod.EVENT_MOUSE_MOVE:
+            FOCUS_CHANGED = window_with_mouse_focus() != LAST_TOPWIN
+            send_mouse_move_event(window_with_mouse_focus(), mouse)
+        elif event_type in (tcod.EVENT_MOUSE_PRESS, tcod.EVENT_MOUSE_RELEASE):
+            TOPWIN = window_with_mouse_focus()
+            FOCUS_CHANGED = TOPWIN != LAST_TOPWIN
+            send_mouse_click_event(TOPWIN, mouse)
+    elif event_type & tcod.EVENT_KEY:
+        TOPWIN = window_with_key_focus()
+        if TOPWIN:
+            send_key_event(TOPWIN, key,
+                           MOUSE_X - TOPWIN.tlx,
+                           MOUSE_Y - TOPWIN.tly)
         # That's done, now look at the state of the mouse
     if CURRENT_MOUSE_EVENT and CURRENT_MOUSE_EVENT.lbutton and \
             TOPWIN and not TOPWIN.hidden_p:

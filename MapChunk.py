@@ -96,7 +96,8 @@ class MapChunk(Viewport):
     def on_key_event(self, event):
         key = event.key_info.vk
         p = self.actors['Player']
-        if p:
+        if p and not event.key_info.pressed:
+            p.clear(self.map_console)
             if key == tcod.KEY_UP:
                 p.y = 0 if p.y == 0 else p.y-1
             elif key == tcod.KEY_DOWN:
@@ -104,8 +105,8 @@ class MapChunk(Viewport):
             elif key == tcod.KEY_LEFT:
                 p.x = 0 if p.x == 0 else p.x-1
             elif key == tcod.KEY_RIGHT:
-                p.y = self.map_width if p.x == self.map_width else p.x+1
-        self.on_update()
+                p.x = self.map_width if p.x == self.map_width else p.x+1
+            p.draw(self.map_console)
 
     def add_actor(self, actor_obj):
         self.actors[actor_obj.name] = actor_obj
