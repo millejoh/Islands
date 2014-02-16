@@ -36,6 +36,14 @@ def clamp(low, high, expr):
     ... MAX]."""
     return min((high, max((low, expr))))
 
+def root_to_win_coord(win, root_x, root_y):
+    """Given coordinate pair (root_x, root_y) on the root console,
+    return location of same point relative to upper left corner of
+    window win.
+    """
+    wx = root_x - win.tlx
+    wy = root_y - win.tly
+    return wx, wy
 
 def translate_negative_coords(x, y, window=None):
     assert tc.R.screen_width() > 0
@@ -103,11 +111,11 @@ def rectangle_overlaps_p(rect1, rect2):
                 (tly_a > bry_b))
 
 
-def redraw_all_windows(exclude=[]):
+def redraw_all_windows(exclude=None):
     """Copy all visible windows onto the root console.
 
     exclude = list of window instances to exclude, defaults to None."""
-    windows = [win for win in WINDOW_STACK if win not in exclude]
+    windows = [win for win in WINDOW_STACK if win not in ([] if exclude is None else exclude)]
     tc.R.active_root.clear()
     if windows:
         for win in windows.reverse():
@@ -961,30 +969,30 @@ class Viewport(Window):
         """Copy the visible portion of the viewport contents
         (as set by view_tlx and view_tly) to the root console.
         """
-
         vtlx, vtly = self.view_tlx, self.view_tly
+        v_w, v_h = self.view_width, self.view_height
         wtlx = 1 if self.framed_p else 0
         wtly = 1 if self.framed_p else 0
-        width = self.width - 2 if self.framed_p else 0
-        height = self.height - 2 if self.framed_p else 0
         edges_showing = False
 
         if vtlx < 0:
             wtlx = wtlx + abs(vtlx)
-            width = width + vtlx
+            v_w = v_w + vtlx
             vtlx = 0
             edges_showing = True
-        elif vtlx >= (self.view_width - width):
-            width = self.view_width - vtlx
+        elif vtlx >= (self.map_width - v_w):
+            vtlx = self.map_width - v_w
+            v_w = self.width - vtlx
             edges_showing = True
 
         if vtly < 0:
             wtly = wtly + abs(vtly)
-            height = height + vtly
+            v_h = v_h + vtly
             vtly = 0
             edges_showing = True
-        elif vtly >= (self.view_height - height):
-            height = self.view_height - vtly
+        elif vtly >= (self.map_height - v_h):
+            vtly = self.map_height - v_h
+            v_h = self.height - vtly
             edges_showing = True
 
         if edges_showing:
@@ -994,13 +1002,13 @@ class Viewport(Window):
                                        self.height - 2 if self.framed_p else 0,
                                        clear=False,
                                        flag=tcod.BKGND_NONE)
-        self.map_console.blit(self, vtlx, vtly, width, height,
+        self.map_console.blit(self, vtlx, vtly, v_w, v_h,
                               wtlx, wtly, 1.0, 1.0)
 
     def clear_map(self, auto_redraw=False):
         self.map_console.clear()
         self.copy_map_to_viewport()
-        if redraw:
+        if auto_redraw:
             self.redraw_area()
 
     def center_view(self, x, y):

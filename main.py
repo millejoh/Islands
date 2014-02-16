@@ -4,10 +4,10 @@ from MapChunk import MapChunk, gEntity
 
 if __name__ == '__main__':
     r = console.RootConsole(80, 60)
-    map = MapChunk(tlx=10, tly=10, width=40, height=40, framed=True, map_width=120,
+    map = MapChunk(tlx=0, tly=0, width=60, height=40, framed=False, map_width=120,
                    map_height=120, view_tlx=0, view_tly=0, title='The Map')
-    map.random_island(5,5, 20, 20)
-    map.random_island(30, 30, 40, 40)
+    map.random_island(0,0, 20, 20)
+    map.random_island(30, 5, 40, 40)
     player = gEntity(char='@', name='Player', color = 'blue')
     map.add_actor(player)
     map.on_update()

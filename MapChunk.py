@@ -86,6 +86,7 @@ class MapChunk(Viewport):
             self.map_console[x, y] = (' ', tcod.white, intensity)
 
     def on_update(self):
+        self.clear_map()
         if self.draw_mode == 'elevations':
             self.draw_elevations()
         for prop in self.props.values():
@@ -96,7 +97,7 @@ class MapChunk(Viewport):
     def on_key_event(self, event):
         key = event.key_info.vk
         p = self.actors['Player']
-        if p and not event.key_info.pressed:
+        if p and event.key_info.pressed:
             p.clear(self.map_console)
             if key == tcod.KEY_UP:
                 p.y = 0 if p.y == 0 else p.y-1
@@ -106,6 +107,7 @@ class MapChunk(Viewport):
                 p.x = 0 if p.x == 0 else p.x-1
             elif key == tcod.KEY_RIGHT:
                 p.x = self.map_width if p.x == self.map_width else p.x+1
+            self.center_view(p.x, p.y)
             p.draw(self.map_console)
 
     def add_actor(self, actor_obj):
