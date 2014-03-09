@@ -8,24 +8,27 @@ import random as r
 import numpy as np
 from pyDatalog import pyDatalog
 
-biomes = [ ['SNOW', 'SNOW', 'SNOW', 'TUNDRA', 'BARE', 'SCORCHED'],
-       	   ['TAIGA', 'TAIGA', 'SHRUBLAND', 'SHRUBLAND', 'TEMPERATE_DESERT', 'TEMPERATE_DESERT'],
-           ['TEMPERATE_RAIN_FOREST', 'TEMPERATE_DECIDUOUS_FOREST', 'TEMPERATE_DECIDUOUS_FOREST', 'GRASSLAND', 'GRASSLAND', 'TEMPERATE_DESERT'],
-           ['TROPICAL_RAIN_FOREST', 'TROPICAL_RAIN_FOREST', 'TROPICAL_SEASONAL_FOREST', 'TROPICAL_SEASONAL_FOREST', 'GRASSLAND', 'SUBTROPICAL_DESERT'] ]
+biomes = [['SNOW', 'SNOW', 'SNOW', 'TUNDRA', 'BARE', 'SCORCHED'],
+          ['TAIGA', 'TAIGA', 'SHRUBLAND', 'SHRUBLAND', 'TEMPERATE_DESERT', 'TEMPERATE_DESERT'],
+          ['TEMPERATE_RAIN_FOREST', 'TEMPERATE_DECIDUOUS_FOREST', 'TEMPERATE_DECIDUOUS_FOREST', 'GRASSLAND',
+           'GRASSLAND', 'TEMPERATE_DESERT'],
+          ['TROPICAL_RAIN_FOREST', 'TROPICAL_RAIN_FOREST', 'TROPICAL_SEASONAL_FOREST', 'TROPICAL_SEASONAL_FOREST',
+           'GRASSLAND', 'SUBTROPICAL_DESERT']]
 
-biome_colors = { 'SNOW'      : tcod.Color(248,248,248),
-                 'TUNDRA'    : tcod.Color(221,221,187),
-                 'BARE'      : tcod.Color(187,187,187),
-                 'SCORCHED'  : tcod.Color(153,153,153),
-                 'TAIGA'     : tcod.Color(204,212,187),
-                 'SHRUBLAND' : tcod.Color(194,204,187),
-                 'GRASSLAND' : tcod.Color(192,212,170),
-                 'TEMPERATE_DESERT'           : tcod.Color(228,232,202),
-                 'TEMPERATE_RAIN_FOREST'      : tcod.Color(164,196,168),
-                 'TEMPERATE_DECIDUOUS_FOREST' : tcod.Color(180,201,169),
-                 'TROPICAL_RAIN_FOREST'       : tcod.Color(156,187,169),
-                 'TROPICAL_SEASONAL_FOREST'   : tcod.Color(169,204,164),
-                 'SUBTROPICAL_DESERT'         : tcod.Color(233,221,199) }
+biome_colors = {'SNOW': tcod.Color(248, 248, 248),
+                'TUNDRA': tcod.Color(221, 221, 187),
+                'BARE': tcod.Color(187, 187, 187),
+                'SCORCHED': tcod.Color(153, 153, 153),
+                'TAIGA': tcod.Color(204, 212, 187),
+                'SHRUBLAND': tcod.Color(194, 204, 187),
+                'GRASSLAND': tcod.Color(192, 212, 170),
+                'TEMPERATE_DESERT': tcod.Color(228, 232, 202),
+                'TEMPERATE_RAIN_FOREST': tcod.Color(164, 196, 168),
+                'TEMPERATE_DECIDUOUS_FOREST': tcod.Color(180, 201, 169),
+                'TROPICAL_RAIN_FOREST': tcod.Color(156, 187, 169),
+                'TROPICAL_SEASONAL_FOREST': tcod.Color(169, 204, 164),
+                'SUBTROPICAL_DESERT': tcod.Color(233, 221, 199)}
+
 
 class Tile(object):
     def __init__(self):
@@ -67,22 +70,22 @@ class MapChunk(Viewport):
                         elevational transitions.
         """
         e = self.elevation
-        max_radius = 0.2 * (width+height/2.0)
+        max_radius = 0.2 * (width + height / 2.0)
         # Blob the map with hills
-        for i in range(int(roughness*20)):
+        for i in range(int(roughness * 20)):
             radius = r.randint(0, max_radius)
-            x, y = r.randint(sx, sx+width), r.randint(sy, sy+height)
-            e.add_hill(x, y, radius, radius*radius)
+            x, y = r.randint(sx, sx + width), r.randint(sy, sy + height)
+            e.add_hill(x, y, radius, radius * radius)
 
     def draw_terrain(self):
         for x, y in np.ndinndex(*self.terrain.shape()):
-            self.map_console[x, y] = (' ', tcod.white, biome_colors[self.terrain[x,y]])
+            self.map_console[x, y] = (' ', tcod.white, biome_colors[self.terrain[x, y]])
 
     def draw_elevations(self, as_color=True):
         for x, y in np.ndindex(*self.elevation.as_ndarray().shape):
             if as_color:
                 intensity = tcod.color_lerp(tcod.black, tcod.white,
-                                            self.elevation[x, y]/100.0)
+                                            self.elevation[x, y] / 100.0)
             self.map_console[x, y] = (' ', tcod.white, intensity)
 
     def on_update(self):
@@ -100,13 +103,13 @@ class MapChunk(Viewport):
         if p and event.key_info.pressed:
             p.clear(self.map_console)
             if key == tcod.KEY_UP:
-                p.y = 0 if p.y == 0 else p.y-1
+                p.y = 0 if p.y == 0 else p.y - 1
             elif key == tcod.KEY_DOWN:
-                p.y = self.map_height if p.y == self.map_height else p.y+1
+                p.y = self.map_height if p.y == self.map_height else p.y + 1
             elif key == tcod.KEY_LEFT:
-                p.x = 0 if p.x == 0 else p.x-1
+                p.x = 0 if p.x == 0 else p.x - 1
             elif key == tcod.KEY_RIGHT:
-                p.x = self.map_width if p.x == self.map_width else p.x+1
+                p.x = self.map_width if p.x == self.map_width else p.x + 1
             self.center_view(p.x, p.y)
             p.draw(self.map_console)
 
@@ -147,7 +150,7 @@ class DefaultStructure(object):
 class gEntity(DefaultStructure):  # , pyDatalog.Mixin):
     _fields = {'x': 0, 'y': 0, 'z': 0, 'eclass': 'entity',
                'char': ' ', 'color': tcod.white,
-               'name':'generic entity'}
+               'name': 'generic entity'}
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
