@@ -1,3 +1,4 @@
+from random import randint
 from tcod import console
 from tcod.gui import ListWindow
 from MapChunk import MapChunk, gEntity
@@ -8,6 +9,7 @@ import numpy as np
 import cocos
 from cocos.director import director
 import cocos.euclid as eu
+
 
 def test_tcod():
     r = console.RootConsole(80, 60)
@@ -26,20 +28,21 @@ def test_tcod():
     list_view.add_item('last one', 'the end.')
     r.run()
 
+
 def rectangle(width, height, color_rgba=None):
-        x, y = width, height
-        ox, oy = 0, 0
+    x, y = width, height
+    ox, oy = 0, 0
 
-        vlist = pyglet.graphics.vertex_list(4,
-                                            ('v2i', (ox, oy,
-                                                     ox, oy + y,
-                                                  ox + x, oy + y,
-                                                     ox + x, oy)),
-                                            ('c4B', (255, 255, 255, 255) * 4))
-        if isinstance(color_rgba, tuple):
-            vlist.colors[:] = color_rgba*4
+    vlist = pyglet.graphics.vertex_list(4,
+                                        ('v2i', (ox, oy,
+                                                 ox, oy + y,
+                                                 ox + x, oy + y,
+                                                 ox + x, oy)),
+                                        ('c4B', (255, 255, 255, 255) * 4))
+    if isinstance(color_rgba, tuple):
+        vlist.colors[:] = color_rgba * 4
 
-        return vlist
+    return vlist
 
 
 class HelloWorld(cocos.layer.Layer):
@@ -52,7 +55,7 @@ class HelloWorld(cocos.layer.Layer):
 
 
 class CocosWindow(cocos.layer.ColorLayer):
-    is_event_handler = True     #: enable pyglet's events
+    is_event_handler = True  #: enable pyglet's events
 
     def __init__(self, tlx=20, tly=20, width=20, height=20, hidden=False,
                  parent=None, title="", framed=False):
@@ -62,7 +65,7 @@ class CocosWindow(cocos.layer.ColorLayer):
         self.parent = parent
         self.title = title
         self.framed = framed
-        self.border = cocos.layer.ColorLayer(0, 0, 0, 255, width=width-2, height=height-2)
+        self.border = cocos.layer.ColorLayer(0, 0, 0, 255, width=width - 2, height=height - 2)
         self.border.position = 1, 1
         self.add(self.border)
 
@@ -75,8 +78,10 @@ class CocosWindow(cocos.layer.ColorLayer):
             cy += dy
         self.position = cx, cy
 
+
 world_width = 1000 + 4 * 98  #1392
 world_height = 1000
+
 
 class ProbeQuad(cocos.cocosnode.CocosNode):
     def __init__(self, r, color4):
@@ -94,6 +99,39 @@ class ProbeQuad(cocos.cocosnode.CocosNode):
         glEnd()
         glPopMatrix()
 
+
+class ElevationView(cocos.layer.ScrollableLayer):
+    is_event_handler = True
+
+    def __init__(self, map_elevations, tile_size_px=10):
+        self.emap = map_elavations
+        super().__init()
+        self.px_width = map_elevations.width * tile_size
+        self.px_height = map_elevations.height * tile_size
+
+
+class ColorGrid(cocos.layer.Layer):
+    def __init__(self, cell_width, cell_height, cell_size=10):
+        super().__init__()
+        self.cells = np.zeros((cell_width, cell_height), dtype=object)
+        batch = cocos.batch.BatchNode()
+        self.add(batch)
+        image = pyglet.image.load('block_black.png')
+        w, h = image.width, image.height
+        scale = cell_size / w if w >= h else cell_size / h
+        for i in range(cell_width):
+            for j in range(cell_height):
+                position = (i * cell_size, j * cell_size)
+                cell = cocos.sprite.Sprite(image, position=position, scale=scale, anchor=(0, 0))
+                self.cells[i, j] = cell
+                batch.add(cell)
+        self.batch = batch
+
+    def __iter__(self):
+        (w, h) = self.cells.shape
+        for i in range(w):
+            for j in range(h):
+                yield self.cells[i, j]
 
 class SquareLand(cocos.layer.ScrollableLayer):
     is_event_handler = True
@@ -255,19 +293,16 @@ class TestScene(cocos.scene.Scene):
     def on_cocos_resize(self, usable_width, usable_height):
         self.f_refresh_marks()
 
-if __name__ == '__main__':
-    map = MapChunk(tlx=0, tly=0, width=60, height=40, framed=False, map_width=120,
-                   map_height=120, view_tlx=0, view_tly=0, title='The Map')
-    map.random_island(0, 0, 20, 20)
-    map.random_island(30, 5, 140, 40)
-    player = gEntity(char='@', name='Player', color='blue')
-    map.add_actor(player)
 
+if __name__ == '__main__':
     director.init()
-    scene = TestScene()
-    world_layer = SquareLand(world_width, world_height)
-    scroller = cocos.layer.ScrollingManager()
-    scroller.add(world_layer)
-    scene.add(scroller)
+    cg = ColorGrid(100, 100, 20)
+    scene = cocos.scene.Scene()
+    #world_layer = SquareLand(world_width, world_height)
+    #scroller = cocos.layer.ScrollingManager()
+    #scroller.add(world_layer)
+    scene.add(cg)
+    # for cell in cg:
+    #     cell.color = (randint(0, 255), randint(0, 255), randint(0, 255))
     director.run(scene)
 
