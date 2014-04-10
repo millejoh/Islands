@@ -1,0 +1,6 @@
+* Tree
+  :PROPERTIES:
+  :x:        0
+  :y:        0
+  :glyph:    '^'
+  :END:
