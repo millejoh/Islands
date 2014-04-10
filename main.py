@@ -1,7 +1,7 @@
 from random import randint
-from tcod import console
-from tcod.gui import ListWindow
-from MapChunk import MapChunk, gEntity
+#from tcod import console
+#from tcod.gui import ListWindow
+#from MapChunk import MapChunk, gEntity
 import pyglet
 from pyglet.window import key
 from pyglet.gl import *

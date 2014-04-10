@@ -219,3 +219,5 @@ pip-log.txt
 
 # Binaries
 
+.idea/misc.xml
+.idea/workspace.xml
