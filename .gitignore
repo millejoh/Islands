@@ -2,8 +2,6 @@
 ## Eclipse
 #################
 
-.idea/
-
 *.pydevproject
 .project
 .metadata
@@ -191,6 +189,8 @@ $RECYCLE.BIN/
 
 *.py[co]
 *.dll
+.idea
+workspace.xml
 
 # Packages
 *.egg
@@ -218,6 +218,4 @@ pip-log.txt
 .mr.developer.cfg
 
 # Binaries
-
-.idea/misc.xml
 .idea/workspace.xml
