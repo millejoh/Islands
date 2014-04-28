@@ -1,4 +1,14 @@
+from math import floor, ceil
+
+__author__ = 'millejoh'
 import numpy as np
+
+
+def lerp(c0, c1, dx):
+    """Calculated interpolated value between `c0` and `c1` given dx that is
+     between 0 and 1.
+    """
+    return (1.0-dx)*c0 + dx*c1
 
 class Heightmap(object):
     def __init__(self, width, height):
@@ -14,6 +24,9 @@ class Heightmap(object):
             return self.interpolated_value(x, y)
         else:
             return self.data[x, y]
+
+    def randomize(self, scale = 1.0, translate = 0.0):
+        self.data = (np.random.rand(*self.data.shape) * scale) + translate
 
     def copy(self):
         nhm = Heightmap(self.width, self.height)
@@ -32,36 +45,64 @@ class Heightmap(object):
         The heightmape is translated and scaled so that the lowest
         cell value becomes min and the highest cell value becomes max
         min < max."""
-        # max(data)*m+b = max
-        # max-max(data)*m = b
-        # -
-        # min(data)*m+b = min
-        # min(data)*m+max-max(data)*m=min
-        # m*(min(data)-max(data)) = min-max
-        # m = (min-max)/(min(data)-max(data))
         h_max, h_min = np.amax(self.data), np.amin(self.data)
         m = min - max / (h_min - h_max)
         b = max - h_max * m
         self.data = self.data*m + b
 
-    def lerp(self, hm2, hm_result, coef):
-        return tcod.heightmap_lerp_hm(self._data, self._data, hm_result, coef)
+    def lerp(self, hm, coef):
+        """Calculate linear interpolation between two maps.
+
+        hm -- Second map.
+        coef -- Interpolation coefficient.
+        """
+        a, b = self.data, hm.data
+        return a + (b - a)*coef
 
     def interpolated_value(self, x, y):
         """Return interpolated height for noninteger coordinates.
 
-        x, y -- Coordinates of map cell."""
-        return tcod.heightmap_get_interpolated_value(self._data, x, y)
+        x, y -- Floating point coordinates of map cell."""
+        x_imin, x_imax = floor(x), ceil(x)
+        y_imin, y_imax = floor(y), ceil(y)
+        x_max, y_max = self.data.shape
+        dx = x - x_imin
+        dy = y - y_imin
+        arr = self.data
+        if x_imax == x_max:
+            x_imin -= 1
+        else:
+            x_imax += 1
+        if y_imax == y_max:
+            y_imin -= 1
+        else:
+            y_imax += 1
+        corners = arr[x_imin:x_imax, y_imin:y_imax]
+        top = lerp(corners[0,0], corners[0,1], dx)
+        bottom = lerp(corners[1,0], corners[1,1], dx)
+        return lerp(top, bottom, dy)
+
 
     def normal(self, x, y, waterlevel):
-        return tcod.heightmap_get_normal(self._data, x, y, waterlevel)
+        pass
 
     def add_hill(self, cx, cy, radius, height):
-        tcod.heightmap_add_hill(self._data, cx, cy, radius, height)
+        radius2 = radius*radius
+        coef = height / radius2
+        minx = max(0,cx-radius)
+        maxx = min(self.width, cx+radius)
+        miny = max(0, cy-radius)
+        maxy = min(self.height, cy+radius)
+        for x in range(minx, maxx):
+            xdist = (x-cx)*(x-cx)
+            for y in range(miny, maxy):
+                z = radius2 - xdist - (y-cy)*(y-cy)
+                if z > 0.0:
+                    self.data[x,y] += z * coef
 
     def add_fbm(self, noise, mulx, muly, addx, addy, octaves, delta, scale):
         "Perturb  by adding fbm noise values."
-        tcod.heightmap_add_fbm(self._data, noise, mulx, muly, addx, addy, octaves, delta, scale)
+        pass
 
     def mid_point_displacement(self, rng, roughness):
         """Generates a realistic fractal heightmap.
@@ -74,7 +115,7 @@ class Heightmap(object):
         The roughness range should be comprised between 0.4 and
         0.6.
         """
-        tcod.heightmap_mid_point_displacement(self._data, rng, roughness)
+        pass
 
 
     def kernel_transform(self, kernel_size, dx, dy, weight, min_level, max_level):
@@ -83,9 +124,9 @@ class Heightmap(object):
         This function allows you to apply a generic transformation on
         the map, so that each resulting cell value is the weighted sum of
         several neighbour cells. This can be used to smooth/sharpen the
-        map. 
+        map.
 
-        kernel_size = Size of transformation.  
+        kernel_size = Size of transformation.
 
         dx, dy = Array of kernel_size coordinates. The coordinates are
                  relative to the current cell (0,0) is current cell,
@@ -100,12 +141,5 @@ class Heightmap(object):
 
         max_level = The transformation is only applied to cells which
                     value is <= maxLevel."""
-        tcod.heightmap_kernel_transform(self._data, kernel_size, dx, dy, weight,
-                                        min_level, max_level)
-    def as_ndarray(self):
-        w, h = self.width, self.height
-        ndarray = np.zeros((self.width,self.height),dtype=float)
-        for i in range(w):
-            for j in range(h):
-                ndarray[i,j] = self[i,j]
-        return ndarray
+        pass
+
