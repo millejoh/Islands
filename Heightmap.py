@@ -8,7 +8,8 @@ def lerp(c0, c1, dx):
     """Calculated interpolated value between `c0` and `c1` given dx that is
      between 0 and 1.
     """
-    return (1.0-dx)*c0 + dx*c1
+    return (1.0 - dx) * c0 + dx * c1
+
 
 class Heightmap(object):
     def __init__(self, width, height):
@@ -25,7 +26,7 @@ class Heightmap(object):
         else:
             return self.data[x, y]
 
-    def randomize(self, scale = 1.0, translate = 0.0):
+    def randomize(self, scale=1.0, translate=0.0):
         self.data = (np.random.rand(*self.data.shape) * scale) + translate
 
     def copy(self):
@@ -36,19 +37,19 @@ class Heightmap(object):
     def clear_map(self):
         self.data = np.zeros((self.width, self.height), dtype=np.float64)
 
-    def clamp(self, min, max):
-        self.data.clip(min, max)
+    def clamp(self, min_, max_):
+        self.data.clip(min_, max_)
 
-    def normalize(self, min=0.0, max=1.0):
+    def normalize(self, min_=0.0, max_=1.0):
         """Normalize heightmap values between <min> and <max>.
 
         The heightmape is translated and scaled so that the lowest
         cell value becomes min and the highest cell value becomes max
         min < max."""
         h_max, h_min = np.amax(self.data), np.amin(self.data)
-        m = min - max / (h_min - h_max)
-        b = max - h_max * m
-        self.data = self.data*m + b
+        m = min_ - max_ / (h_min - h_max)
+        b = max_ - h_max * m
+        self.data = self.data * m + b
 
     def lerp(self, hm, coef):
         """Calculate linear interpolation between two maps.
@@ -57,7 +58,7 @@ class Heightmap(object):
         coef -- Interpolation coefficient.
         """
         a, b = self.data, hm.data
-        return a + (b - a)*coef
+        return a + (b - a) * coef
 
     def interpolated_value(self, x, y):
         """Return interpolated height for noninteger coordinates.
@@ -78,8 +79,8 @@ class Heightmap(object):
         else:
             y_imax += 1
         corners = arr[x_imin:x_imax, y_imin:y_imax]
-        top = lerp(corners[0,0], corners[0,1], dx)
-        bottom = lerp(corners[1,0], corners[1,1], dx)
+        top = lerp(corners[0, 0], corners[0, 1], dx)
+        bottom = lerp(corners[1, 0], corners[1, 1], dx)
         return lerp(top, bottom, dy)
 
 
@@ -87,22 +88,38 @@ class Heightmap(object):
         pass
 
     def add_hill(self, cx, cy, radius, height):
-        radius2 = radius*radius
+        radius2 = radius * radius
         coef = height / radius2
-        minx = max(0,cx-radius)
-        maxx = min(self.width, cx+radius)
-        miny = max(0, cy-radius)
-        maxy = min(self.height, cy+radius)
+        minx = max(0, cx - radius)
+        maxx = min(self.width, cx + radius)
+        miny = max(0, cy - radius)
+        maxy = min(self.height, cy + radius)
         for x in range(minx, maxx):
-            xdist = (x-cx)*(x-cx)
+            xdist = (x - cx) * (x - cx)
             for y in range(miny, maxy):
-                z = radius2 - xdist - (y-cy)*(y-cy)
+                z = radius2 - xdist - (y - cy) * (y - cy)
                 if z > 0.0:
-                    self.data[x,y] += z * coef
+                    self.data[x, y] += z * coef
 
     def add_fbm(self, noise, mulx, muly, addx, addy, octaves, delta, scale):
         "Perturb  by adding fbm noise values."
-        pass
+        xcoef = mulx / self.width
+        ycoef = muly / self.height
+        min = 1.0
+        max = 0.0
+        f = [min, max]
+        for x in range(self.width):
+            offset = x
+            f[0] = (x + addx) * xcoef
+            for y in range(self.height):
+                f[1] = (y + addy) * ycoef
+                value = delta + noise.get_fbm(noise, f, octaves) * scale
+                self.data[x, y] += value
+                if value < min:
+                    min = value
+                if value > max:
+                    max = value
+
 
     def mid_point_displacement(self, rng, roughness):
         """Generates a realistic fractal heightmap.

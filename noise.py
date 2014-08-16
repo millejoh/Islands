@@ -16,6 +16,7 @@ WAVELET_TILE_SIZE = 32
 WAVELET_ARAD = 16
 WAVELET_SCALE = 2.0
 
+
 def cubic(x):
     return x * x * (3 - 2 * x)
 
@@ -53,7 +54,7 @@ def simplex_gradient_1d(h, x):
     return grad * x
 
 
-def simplex_gradient_2d(n, h, x, y):
+def simplex_gradient_2d(h, x, y):
     h &= 0x7
     if h < 4:
         u = x
@@ -96,12 +97,9 @@ def absmod(x, n):
 
 def noise_wavelet_downsample(wav_from, wav_to, stride):
     for i in range(WAVELET_TILE_SIZE / 2):
-        to[i * stride] = 0
-        for k in range(2*i-WAVELET_ARAD, 2 * i+WAVELET_ARAD):
-            to[i * stride] += a[k-2 * i] * from[absmod(k, WAVELET_TILE_SIZE) * stride];
-
-
-
+        wav_to[i * stride] = 0
+        for k in range(2 * i - WAVELET_ARAD, 2 * i + WAVELET_ARAD):
+            wav_to[i * stride] += a[k - 2 * i] * wav_from[absmod(k, WAVELET_TILE_SIZE) * stride]
 
 
 class NoiseGenerator(object):
@@ -142,12 +140,12 @@ class NoiseGenerator(object):
     def lattice(self, ix, fx, iy, fy, iz, fz, iw, fw):
         n = np.array([ix, iy, iz, iw])
         f = np.array([fx, fy, fz, fw])
-        nIndex = 0
+        n_index = 0
         value = 0
         for i in range(self.ndim):
-            nIndex = self.map[(nIndex + floor(n[i])) & 0xFF]
+            n_index = self.map[(n_index + floor(n[i])) & 0xFF]
         for i in range(self.ndim):
-            value += self.buffer[nIndex, i] * f[i]
+            value += self.buffer[n_index, i] * f[i]
         return value
 
     def perlin_noise(self, f):
@@ -163,7 +161,7 @@ class NoiseGenerator(object):
         elif self.ndim == 4:
             return clamp(-0.99999, 0.99999, self.perlin_noise_4d(n, r, w))
 
-    def perlin_noise_1d(self, self1, n, r, w):
+    def perlin_noise_1d(self, n, r, w):
         return lerp(self.lattice(n[0], r[0], 0, 0, 0, 0, 0, 0),
                     self.lattice(n[0] + 1, r[0] - 1, 0, 0, 0, 0, 0, 0),
                     w[0])
@@ -249,8 +247,8 @@ class NoiseGenerator(object):
         x1 = x0 - 1.0
         t0 = 1.0 - x0 * x0
         t1 = 1.0 - x1 * x1
-        t0 = t0 * t0
-        t1 = t1 * t1
+        t0 *= t0
+        t1 *= t1
         i0 = self.map[i0 & 0xFF]
         n0 = simplex_gradient_1d(i0, x0)
         n0 *= t0 * t0
@@ -260,15 +258,15 @@ class NoiseGenerator(object):
         return 0.25 * (n0 + n1)
 
     def simplex_noise_2d(self, f):
-        F2 = 0.366025403  #  0.5f * (sqrtf(3.0f)-1.0f)
-        G2 = 0.211324865  # (3.0f - sqrtf(3.0f))/6.0f
+        F2 = 0.366025403  # 0.5 * (sqrt(3.0)-1.0)
+        g2 = 0.211324865  # (3.0 - sqrt(3.0)/6.0
 
         s = (f[0] + f[1]) * F2 * SIMPLEX_SCALE
         xs = f[0] * SIMPLEX_SCALE + s
         ys = f[1] * SIMPLEX_SCALE + s
         i = floor(xs)
         j = floor(ys)
-        t = (i + j) * G2
+        t = (i + j) * g2
         xo = i - t
         yo = j - t
         x0 = f[0] * SIMPLEX_SCALE - xo
@@ -281,19 +279,19 @@ class NoiseGenerator(object):
         else:
             i1 = 0
             j1 = 1
-        x1 = x0 - i1 + G2
-        y1 = y0 - j1 + G2
-        x2 = x0 - 1.0 + 2.0 * G2
-        y2 = y0 - 1.0 + 2.0 * G2
+        x1 = x0 - i1 + g2
+        y1 = y0 - j1 + g2
+        x2 = x0 - 1.0 + 2.0 * g2
+        y2 = y0 - 1.0 + 2.0 * g2
         t0 = 0.5 - x0 * x0 - y0 * y0
 
+        n0 = None
         if t0 < 0.0:
             n0 = 0.0
         else:
             idx = (ii + self.map[jj]) & 0xFF
             t0 *= t0
             idx = self.map[idx]
-            n0
             simplex_gradient_2d(idx, x0, y0)
             n0 *= t0 * t0
 
@@ -310,6 +308,7 @@ class NoiseGenerator(object):
 
         t2 = 0.5 - x2 * x2 - y2 * y2
 
+        n2 = None
         if t2 < 0.0:
             n2 = 0.0
         else:
@@ -389,14 +388,13 @@ class NoiseGenerator(object):
 
         if t2 < 0.0:
             n2 = 0.0
-            f
         else:
             idx = self.map[(ii + i2 + self.map[(jj + j2 + self.map[(kk + k2) & 0xFF]) & 0xFF]) & 0xFF]
             t2 *= t2
-            n2 = simplex_gradient_2d(idx, x2, y2, z2)
+            n2 = simplex_gradient_3d(idx, x2, y2, z2)
             n2 *= t2 * t2
 
-        t3 = 0.6 - x3 * x3 - y3 * y3 - z3 * z3;
+        t3 = 0.6 - x3 * x3 - y3 * y3 - z3 * z3
 
         if t3 < 0.0:
             n3 = 0.0
@@ -489,9 +487,8 @@ class NoiseGenerator(object):
 
         if t1 < 0.0:
             n1 = 0.0
-            f
         else:
-            dx = self.map[
+            idx = self.map[
                 (ii + i1 + self.map[(jj + j1 + self.map[(kk + k1 + self.map[(ll + l1) & 0xFF]) & 0xFF]) & 0xFF]) & 0xFF]
             t1 *= t1
             n1 = simplex_gradient_4d(idx, x1, y1, z2, w1)
@@ -501,11 +498,10 @@ class NoiseGenerator(object):
 
         if t2 < 0.0:
             n2 = 0.0
-            f
         else:
             idx = self.map[(ii + i2 + self.map[
-                (jj + j2 + self.map[(kk + k2 + self.map[(ll + l2) & 0xFF]) & 0xFF]) & 0xFF]) & 0xFF];
-            t2 *= t2;
+                (jj + j2 + self.map[(kk + k2 + self.map[(ll + l2) & 0xFF]) & 0xFF]) & 0xFF]) & 0xFF]
+            t2 *= t2
             n2 = simplex_gradient_4d(idx, x2, y2, z2, w2)
             n2 *= t2 * t2
 
@@ -515,7 +511,7 @@ class NoiseGenerator(object):
             n3 = 0.0
         else:
             idx = self.map[(ii + i3 + self.map[
-                (jj + j3 + self.map[(kk + k3 + self.map[(ll + l3) & 0xFF]) & 0xFF]) & 0xFF]) & 0xFF];
+                (jj + j3 + self.map[(kk + k3 + self.map[(ll + l3) & 0xFF]) & 0xFF]) & 0xFF]) & 0xFF]
             t3 *= t3
             n3 = simplex_gradient_4d(idx, x3, y3, z3, w3)
             n3 *= t3 * t3
@@ -526,10 +522,10 @@ class NoiseGenerator(object):
             n4 = 0.0
         else:
             idx = self.map[
-                (ii + 1 + self.map[(jj + 1 + self.map[(kk + 1 + self.map[(ll + 1) & 0xFF]) & 0xFF]) & 0xFF]) & 0xFF];
+                (ii + 1 + self.map[(jj + 1 + self.map[(kk + 1 + self.map[(ll + 1) & 0xFF]) & 0xFF]) & 0xFF]) & 0xFF]
             t4 *= t4
             n4 = simplex_gradient_4d(idx, x4, y4, z4, w4)
-            n4 *= t4 * t4;
+            n4 *= t4 * t4
 
         return 27.0 * (n0 + n1 + n2 + n3 + n4)
 
