@@ -1,10 +1,12 @@
 """Utility functions for printing formatted text in a window.
 """
 
-import tcod
-from tcod.color import decompose_color, string_to_colornum
 import re
 from collections import namedtuple
+
+import tcod
+from color import decompose_color, string_to_colornum
+
 
 TEXT = r'(?P<TEXT>[^{}]+)'
 MARKUP = r'(?P<COLOR>\{[a-zA-Z:,]+?\})'

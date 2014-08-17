@@ -1,9 +1,9 @@
-
 import os.path
 from threading import Thread
-import tcod
-import tcod.color as color
 from collections import namedtuple
+
+import tcod
+import color as color
 from tcod.string import make_colored_string
 
 
