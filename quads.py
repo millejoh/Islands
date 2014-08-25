@@ -1,5 +1,7 @@
 from math import cos, sin, pi
-from random import uniform, sample
+from random import uniform, sample, randint
+from abc import ABCMeta, abstractmethod, abstractproperty
+from itertools import chain
 
 import pyglet
 from pyglet.gl import *
@@ -23,10 +25,16 @@ label = pyglet.text.Label('Hello, world',
                           x=window.width // 2, y=window.height // 2,
                           anchor_x='center', anchor_y='center')
 
-quad_vertices = [-1, -1, 0, -1, 1, 0, 1, 1, 0, 1, -1, 0]
+quad_vertices = [-0.5, -0.5, 0, -0.5, 0.5, 0, 0.5, 0.5, 0, 0.5, -0.5, 0]
 quad_texcoords = (0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 1.0, 1.0)
 quad_normals = (0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0)
 quad_indices = (0, 1, 2, 0, 2, 3)
+
+def flatten(mlist):
+    if type(mlist[0]) is list:
+        return flatten(list(chain.from_iterable(mlist)))
+    else:
+        return mlist
 
 def rot2d(angle):
     """Angle is in radians."""
@@ -56,38 +64,102 @@ def rot3d_z(angle):
                      [s, c, 0],
                      [0, 0, 1],])
 
-def quad_at(x, y, scale=1.0, rot=0.0, quad_color='true-white', batch=None):
+def translate(dx, dy, dz=0.0):
+    return np.matrix([[dx], [dy], [dz]])
+
+
+def quad_vertices_at(x, y, rot=0.0, scale=1.0):
     q = quad_vertices.copy()
+    q[4] = q[4] * scale
+    q[6] = q[6] * scale
+    q[7] = q[7] * scale
+    q[9] = q[9] * scale
+    rot = rot3d_z(rot)
+    for i in range(0, 12, 3):
+        new_vec = rot.dot(np.array([q[i], q[i + 1], q[i + 2]]))[0]
+        q[i], q[i + 1], q[i + 2] = new_vec[0, 0], new_vec[0, 1], new_vec[0, 2]
+    for i in range(4):
+        i0, i1 = i * 3, (i * 3) + 1
+        q[i0], q[i1] = q[i0] + x, q[i1] + y
+
+    return q
+
+
+def quad_at(x, y, scale=1.0, rot=0.0, quad_color='true-white', batch=None):
     if batch:
         vlist = batch.add_indexed(4, pyglet.gl.GL_TRIANGLES, None, quad_indices, 'v3f', 'c3B', 't2f', 'n3f')
     else:
         vlist = pyglet.graphics.vertex_list_indexed(4, quad_indices, 'v3f', 'c3B', 't2f', 'n3f')
 
-    q[4] = q[4]*scale
-    q[6] = q[6]*scale
-    q[7] = q[7]*scale
-    q[9] = q[9]*scale
-
-    rot = rot3d_z(rot)
-    for i in range(0,12,3):
-        new_vec = rot.dot(np.array([q[i], q[i+1], q[i+2]]))[0]
-        q[i], q[i+1], q[i+2] = new_vec[0,0], new_vec[0,1], new_vec[0,2]
-
-    for i in range(4):
-        i0, i1 = i*3, (i*3)+1
-        q[i0], q[i1] = q[i0] + x, q[i1] + y
+    q = quad_vertices_at(x, y, rot, scale)
 
     vlist.vertices = q
     vlist.tex_coords = quad_texcoords
     vlist.normals = quad_normals
     vlist.colors = COLOR_TABLE[quad_color] * 4
 
-    return vlist
+    return vlist, 4
+
+class Shape(metaclass=ABCMeta):
+    def draw(self):
+        if not self.in_batch:
+            self.vlist.draw(pyglet.gl.GL_TRIANGLES)
+
+    @abstractmethod
+    def move(self, dx, dy):
+        pass
+
+    @abstractproperty
+    def vertices(self):
+        pass
+
+class Quad(Shape):
+    def __init__(self, x, y, size=1.0, rot=0.0, color='true-white', batch=None):
+        self.size = size
+        self.x = x
+        self.y = y
+        self.rot = rot
+        self.color = color
+        self.batch = batch
+        self.vlist, self.vcnt = quad_at(x, y, scale=size, rot=rot, quad_color=color, batch=batch)
+        self._vertices = self.vertices
+
+    @property
+    def vertices(self):
+        v = self.vlist.vertices
+        vlist = []
+        for i in range(self.vcnt):
+            n = i*3
+            vlist.append(np.matrix([[v[n]], [v[n+1]], [v[n+2]]]))
+
+        return vlist
+
+    def move(self, dx, dy):
+        self.x += dx
+        self.y += dy
+        for i in range(4):
+            n = i*3
+            self.vlist.vertices[n] += dx
+            self.vlist.vertices[n+1] += dy
+
+    def rotate(self, dangle):
+        s = self.size / 2.0
+        cx, cy = self.x+s, self.y+s
+        self.move(-cx, -cy)
+        self.rot += dangle
+        v = self.vertices
+        r = rot3d_z(dangle)
+        nv = flatten([(r*x).tolist() for x in v])
+        self.vlist.vertices = nv
+        self.move(cx, cy)
+
+        return nv
 
 class QuadField():
-    def __init__(self, width, height, tile_size, base_color='true-white'):
+    def __init__(self, width, height, tile_size, base_color='true-white', ox=0, oy=0):
         """Create a field of colored quads (grid, really) of given `width` and `height`, with
         each quad having size `tile_size`. `width` and `height` must be a multiple of `tile_size`."""
+        self.ox, self.oy = ox, oy
         if (width % tile_size != 0) or (height % tile_size != 0):
             raise ValueError('Parameters width ({0}) and height ({1}) must by a multiple of tile_size ({2}).'.format(width, height, tile_size))
         self.width, self.height = width, height
@@ -110,7 +182,7 @@ class QuadField():
         verts = []
         for iy in range(self.ny):
             for ix in range(self.nx):
-                verts.extend((ix*self.quad_size, iy*self.quad_size, 0))
+                verts.extend(((ix*self.quad_size)+self.ox, (iy*self.quad_size)+self.oy, 0))
 
         indices = []
         w = self.nx
@@ -143,11 +215,11 @@ class QuadField():
     def build_grid(self):
         verts = []
         for ix in range(self.nx):
-            x = ix * self.quad_size
-            verts.extend((x, 0, x, self.height))
+            x = (ix * self.quad_size) + self.ox
+            verts.extend((x, 0+self.oy, x, self.height+self.oy))
         for iy in range(self.ny):
-            y = iy * self.quad_size
-            verts.extend((0, y, self.width, y))
+            y = (iy * self.quad_size) + self.oy
+            verts.extend((0+self.ox, y, self.width+self.ox, y))
 
         return verts
 
@@ -200,11 +272,14 @@ class Entity(object):
 
 class World(object):
     def __init__(self):
-        self.ents = {}
+        self.ents = []
         self.nextEntId = 0
         self.batch = pyglet.graphics.Batch()
-        self.quads = QuadField(100,100,10,'grey')
-        pyglet.clock.schedule_interval(self.spawnEntity, 0.1)
+        self.quads = QuadField(200,200,10,'grey',-100,-100)
+        for i in range(20):
+            self.spawnEntity(0.0)
+        pyglet.clock.schedule_interval(self.move_entities, 0.05)
+        #pyglet.clock.schedule_interval(self.rot_entities, 0.1)
         pyglet.clock.schedule_interval(self.switch_color, 0.5)
 
     def spawnEntity(self, dt):
@@ -213,11 +288,23 @@ class World(object):
         y = uniform(-100.0, 100.0)
         rot = uniform(0.0, 360.0) * pi/180.0
         color = sample(COLOR_TABLE.keys(), 1)[0]
-        ent = Entity(self.nextEntId, size, x, y, rot, color=color, batch=self.batch)
-        self.ents[ent.id] = ent
+        ent = Quad(x, y, size, rot, color=color, batch=self.batch)
+        self.ents.append(ent)
         self.nextEntId += 1
 
         return ent
+
+    def move_entities(self, dt):
+        n_max = len(self.ents)-1
+        for n in range(randint(0, n_max)):
+            ent = self.ents[randint(0, n_max)]
+            ent.move(uniform(-1,1), uniform(-1,1))
+
+    def rot_entities(self,dt):
+        n_max = len(self.ents)-1
+        for n in range(randint(0, n_max)):
+            ent = self.ents[randint(0, n_max)]
+            ent.rotate(0.1)
 
     def switch_color(self, dt):
         color = sample(COLOR_TABLE.keys(), 1)[0]
