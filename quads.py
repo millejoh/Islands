@@ -2,6 +2,7 @@ from math import cos, sin
 from random import uniform, sample, randint
 from itertools import chain
 
+
 import pyglet
 from pyglet.gl import *
 from pyglet2d import Shape
@@ -176,31 +177,22 @@ class QuadField():
         self.grid.draw(GL_LINES)
 
 class Entity(object):
-    def __init__(self, id, size, x, y, rot, color='true-white', batch=None):
+    def __init__(self, id, shape=None):
         self.id = id
-        self.size = size
-        self.x = x
-        self.y = y
-        self.rot = rot
-        self.vlist = quad_at(x, y, scale=size, rot=rot, quad_color=color, batch=batch)
-        # if batch:
-        #     self.vlist = batch.add_indexed(4, pyglet.gl.GL_TRIANGLES, None, quad_indices, 'v3i', 'c3B', 't2f', 'n3f')
-        #     self.in_batch = True
-        # else:
-        #     self.vlist = pyglet.graphics.vertex_list_indexed(4, quad_indices, 'v3i', 'c3B', 't2f', 'n3f')
-        #     self.in_batch = False
-        # self.vlist.vertices = quad_vertices
-        # self.vlist.tex_coords = quad_texcoords
-        # self.vlist.normals = quad_normals
-        # self.vlist.colors = COLOR_TABLE[color] * 4
+        if shape:
+            self.shape = shape
+        else:
+            self.shape = Shape.regular_polygon([0.0, 0.0], 1.0, 3)
+
+    @property
+    def pos(self):
+        return self.shape.center
 
     def draw(self):
-        # glLoadIdentity()
-        # glTranslatef(self.x, self.y, 0.0)
-        # glRotatef(self.rot, 0, 0, 1)
-        # glScalef(self.size, self.size, 1.0)
-        if not self.in_batch:
-            self.vlist.draw(pyglet.gl.GL_TRIANGLES)
+        if not self.shape:
+            self.draw_triangle()
+        else:
+            self.shape.draw()
 
     def draw_triangle(self):
         glLoadIdentity()
@@ -216,54 +208,37 @@ class Entity(object):
         glVertex2f(-0.2, -0.5)
         glEnd()
 
+
+class Actor(Entity):
+    def __init__(self, pos, size, color='true-white', draw_batch=None):
+        corners = [np.asarray(pos), np.asarray(pos)+size]
+        self.shape = Shape.rectangle(corners, color = COLOR_TABLE[color], batch = draw_batch)
+
+    def on_update(self, world_state, dt):
+        nearest = world_state.order_nearest_to(self)
+        actor, dist = nearest[1]
+        if dist > 15.0:
+            vec = -(self.pos - actor.pos)
+            self.shape.velocity = vec / dist
+        else:
+            vec = (self.pos - actor.pos)
+            self.shape.velocity = vec
+
+def build_random_actors(count, batch=None):
+    return [Actor([uniform(-100.0, 100.0), uniform(-100.0, 100.0)], 5.0, sample(COLOR_TABLE.keys(), 1)[0], batch) for i in range(count)]
+
+
 class World(object):
     def __init__(self):
         self.ents = []
-        self.nextEntId = 0
         self.batch = pyglet.graphics.Batch()
+        self.actor_drawables = pyglet.graphics.Batch()
         self.quads = QuadField(200,200,10,'grey',-100,-100)
-        for i in range(200):
-            self.spawnEntity(0.0)
-        pyglet.clock.schedule_interval(self.move_entities, 0.05)
-        pyglet.clock.schedule_interval(self.rot_entities, 0.1)
-        pyglet.clock.schedule_interval(self.switch_color, 0.5)
+        pyglet.clock.schedule_interval(self.update_entities, 0.1)
+        pyglet.clock.schedule_interval(self.update_actors, 0.2)
 
-    def spawnEntity(self, dt):
-        size = uniform(5.0, 10.0)
-        x = uniform(-100.0, 100.0)
-        y = uniform(-100.0, 100.0)
-        corners = [[x, y], [x+size,y+size]]
-        #rot = uniform(0.0, 360.0) * pi/180.0
-        rot = 0.0
-        color = COLOR_TABLE[sample(COLOR_TABLE.keys(), 1)[0]]
-        ent = Shape.rectangle(corners, color=color, batch=self.batch) #Quad(x, y, size, rot, color=color, batch=self.batch)
-        ent.rotate(rot)
-        self.ents.append(ent)
-        self.nextEntId += 1
-
-        return ent
-
-    def move_entities(self, dt):
-        n_max = len(self.ents)-1
-        for n in range(randint(0, n_max)):
-            ent = self.ents[randint(0, n_max)]
-            ent.translate([uniform(-1,1), uniform(-1,1)])
-
-    def rot_entities(self,dt):
-        n_max = len(self.ents)-1
-        for n in range(randint(0, n_max)):
-            ent = self.ents[randint(0, n_max)]
-            ent.rotate(0.1)
-
-    def switch_color(self, dt):
-        color = sample(COLOR_TABLE.keys(), 1)[0]
-        x = int(uniform(0, self.quads.grid_width))
-        y = int(uniform(0, self.quads.grid_height))
-        self.quads.set_color(x, y, color)
-
-    def tick(self):
-        for ent in self.ents.values():
-            ent.rot += 10.0 / ent.size
+    def update_entities(self, dt):
+        [e.shape.update(dt) for e in self.ents]
 
     def draw(self):
         glClear(GL_COLOR_BUFFER_BIT)
@@ -271,8 +246,16 @@ class World(object):
         glLoadIdentity();
         self.quads.draw()
         self.batch.draw()
-        #for ent in self.ents.values():
-        #    ent.draw()
+        self.actor_drawables.draw()
+
+    def order_nearest_to(self, entity):
+        return sorted([(e, e.shape.distance_to(entity.shape.center)) for e in self.ents], key=lambda x: x[1])
+
+    def update_actors(self, dt):
+        for e in self.ents:
+            if type(e) is Actor:
+                e.on_update(self, dt)
+
 
 
 class Camera(object):
@@ -302,26 +285,26 @@ class Hud(object):
         self.fps = pyglet.clock.ClockDisplay()
 
 
-    def draw(self, quad_count):
-        self.text = pyglet.text.Label('Number of quads = {0}'.format(quad_count),
-                                      font_name='Times New Roman',
-                                      font_size = self.win.width / 15.0,
-                                      x = self.win.width / 2,
-                                      y = self.win.height / 2,
-                                      anchor_x = 'center',
-                                      anchor_y = 'center',
-                                      color = (255, 255, 255, 128))
+    def draw(self):
+        # self.text = pyglet.text.Label('Number of quads = {0}'.format(quad_count),
+        #                               font_name='Times New Roman',
+        #                               font_size = self.win.width / 15.0,
+        #                               x = self.win.width / 2,
+        #                               y = self.win.height / 2,
+        #                               anchor_x = 'center',
+        #                               anchor_y = 'center',
+        #                               color = (255, 255, 255, 128))
 
-        glMatrixMode(GL_MODELVIEW);
-        glLoadIdentity();
-        self.text.draw()
+        glMatrixMode(GL_MODELVIEW)
+        glLoadIdentity()
+        #self.text.draw()
         self.fps.draw()
 
 
 camera = Camera(window, 100)
 hud = Hud(window)
 world = World()
-
+world.ents = build_random_actors(20, world.actor_drawables)
 
 @window.event
 def on_draw():
@@ -330,7 +313,7 @@ def on_draw():
     world.draw()
 
     camera.hudProjection()
-    hud.draw(world.nextEntId)
+    hud.draw()
 
     #quad_verts.draw(pyglet.gl.GL_TRIANGLES)
 
