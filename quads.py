@@ -32,6 +32,12 @@ quad_texcoords = (0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 1.0, 1.0)
 quad_normals = (0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0)
 quad_indices = (0, 1, 2, 0, 2, 3)
 
+arial10x10 = pyglet.image.load('arial10x10_alpha.png')
+arial_map = pyglet.image.ImageGrid(arial10x10, 8, 32)
+
+terminal_font = pyglet.image.load('terminal16x16_gs_ro.png')
+terminal_map = pyglet.image.ImageGrid(terminal_font, 16, 16)
+
 def flatten(mlist):
     if type(mlist[0]) is list:
         return flatten(list(chain.from_iterable(mlist)))
@@ -234,19 +240,28 @@ class World(object):
         self.batch = pyglet.graphics.Batch()
         self.actor_drawables = pyglet.graphics.Batch()
         self.quads = QuadField(200,200,10,'grey',-100,-100)
+        self.sprite = pyglet.sprite.Sprite(terminal_map[5,1])
         pyglet.clock.schedule_interval(self.update_entities, 0.1)
         pyglet.clock.schedule_interval(self.update_actors, 0.2)
+
+        # TODO Move to an init_gl style function
+        glEnable(GL_BLEND)
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 
     def update_entities(self, dt):
         [e.shape.update(dt) for e in self.ents]
 
     def draw(self):
+        glEnable(GL_BLEND)
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
         glClear(GL_COLOR_BUFFER_BIT)
         glMatrixMode(GL_MODELVIEW);
         glLoadIdentity();
         self.quads.draw()
         self.batch.draw()
         self.actor_drawables.draw()
+        self.sprite.color = (150, 0, 100)
+        self.sprite.draw()
 
     def order_nearest_to(self, entity):
         return sorted([(e, e.shape.distance_to(entity.shape.center)) for e in self.ents], key=lambda x: x[1])
