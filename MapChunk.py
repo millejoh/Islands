@@ -4,6 +4,8 @@ import random as r
 from colormath.color_objects import RGBColor
 from colormath.color_conversions import convert_color
 import numpy as np
+import tcod
+from tcod.gui import Viewport
 
 
 biomes = [['SNOW', 'SNOW', 'SNOW', 'TUNDRA', 'BARE', 'SCORCHED'],
@@ -34,7 +36,7 @@ def color_lerp(color_1, color_2, coef):
     delta = np.array([c2.rgb_r - c1.rgb_r,
                           c2.rgb_g - c1.rgb_g,
                           c2.rgb_b - c1.rgb_b])
-    interp = orig + delta * ceof
+    interp = orig + delta * coef
     return RGBColor(*interp)
 
 

@@ -7,27 +7,10 @@ from pyglet.window import key
 from pyglet.gl import *
 import numpy as np
 import cocos
-from cocos.director import director
-import cocos.euclid as eu
+from utils import add_alpha
 
-
-def test_tcod():
-    r = console.RootConsole(80, 60)
-    map = MapChunk(tlx=0, tly=0, width=60, height=40, framed=False, map_width=120,
-                   map_height=120, view_tlx=0, view_tly=0, title='The Map')
-    map.random_island(0, 0, 20, 20)
-    map.random_island(30, 5, 140, 40)
-    player = gEntity(char='@', name='Player', color='blue')
-    map.add_actor(player)
-    map.on_update()
-    list_view = ListWindow(tlx=15, tly=15, width=20, height=5, title='List Window', framed=True)
-    list_view.add_item('An item.', 'An item.')
-    list_view.add_item('Another item.', 'Uhuh.')
-    list_view.add_item('Keep going.', 'Number.')
-    list_view.add_item('Scrolling yet?', 'Scroll')
-    list_view.add_item('last one', 'the end.')
-    r.run()
-
+terminal_font = pyglet.image.load('arial10x10.png')
+terminal_map = pyglet.image.ImageGrid(terminal_font, 16, 16)
 
 def rectangle(width, height, color_rgba=None):
     x, y = width, height
@@ -103,8 +86,8 @@ class ProbeQuad(cocos.cocosnode.CocosNode):
 class ElevationView(cocos.layer.ScrollableLayer):
     is_event_handler = True
 
-    def __init__(self, map_elevations, tile_size_px=10):
-        self.emap = map_elavations
+    def __init__(self, map_elevations, tile_size=10):
+        self.emap = map_elevations
         super().__init()
         self.px_width = map_elevations.width * tile_size
         self.px_height = map_elevations.height * tile_size
@@ -114,6 +97,8 @@ class ColorGrid(cocos.layer.Layer):
     def __init__(self, cell_width, cell_height, cell_size=10):
         super().__init__()
         self.cells = np.zeros((cell_width, cell_height), dtype=object)
+        self.sample_glyph = cocos.sprite.Sprite(terminal_map[1,1])
+        self.sample_glyph.position = 100, 100
         batch = cocos.batch.BatchNode()
         self.add(batch)
         image = pyglet.image.load('block_black.png')
@@ -126,6 +111,8 @@ class ColorGrid(cocos.layer.Layer):
                 self.cells[i, j] = cell
                 batch.add(cell)
         self.batch = batch
+        self.add(self.sample_glyph)
+
 
     def __iter__(self):
         (w, h) = self.cells.shape
@@ -239,8 +226,7 @@ class SquareLand(cocos.layer.ScrollableLayer):
 
     def step(self, dt):
         buttons = self.buttons
-        move_dir = eu.Vector2(buttons['right'] - buttons['left'],
-                              buttons['up'] - buttons['down'])
+        move_dir = cocos.Vector2(buttons['right'] - buttons['left'], buttons['up'] - buttons['down'])
         changed = False
         if move_dir:
             new_pos = self.player.position + self.player.fastness * dt * move_dir.normalize()
@@ -287,7 +273,7 @@ class TestScene(cocos.scene.Scene):
             self.add(mark, z=2)
 
     def on_enter(self):
-        director.push_handlers(self.on_cocos_resize)
+        cocos.director.push_handlers(self.on_cocos_resize)
         super(TestScene, self).on_enter()
 
     def on_cocos_resize(self, usable_width, usable_height):
@@ -295,7 +281,7 @@ class TestScene(cocos.scene.Scene):
 
 
 if __name__ == '__main__':
-    director.init()
+    cocos.director.director.init()
     cg = ColorGrid(100, 100, 20)
     scene = cocos.scene.Scene()
     #world_layer = SquareLand(world_width, world_height)
@@ -304,5 +290,5 @@ if __name__ == '__main__':
     scene.add(cg)
     # for cell in cg:
     #     cell.color = (randint(0, 255), randint(0, 255), randint(0, 255))
-    director.run(scene)
+    cocos.director.director.run(scene)
 
