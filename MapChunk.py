@@ -1,10 +1,12 @@
 # Try to find libtcodpy
 from uuid import uuid1
 import random as r
-from colormath.color_objects import RGBColor
-from colormath.color_conversions import convert_color
+from colormath.color_objects import sRGBColor
+#from colormath.color_conversions import convert_color
 import numpy as np
-
+import tcod
+from tcod.gui import Viewport
+from tcod.tools import Heightmap
 
 biomes = [['SNOW', 'SNOW', 'SNOW', 'TUNDRA', 'BARE', 'SCORCHED'],
           ['TAIGA', 'TAIGA', 'SHRUBLAND', 'SHRUBLAND', 'TEMPERATE_DESERT', 'TEMPERATE_DESERT'],
@@ -13,19 +15,19 @@ biomes = [['SNOW', 'SNOW', 'SNOW', 'TUNDRA', 'BARE', 'SCORCHED'],
           ['TROPICAL_RAIN_FOREST', 'TROPICAL_RAIN_FOREST', 'TROPICAL_SEASONAL_FOREST', 'TROPICAL_SEASONAL_FOREST',
            'GRASSLAND', 'SUBTROPICAL_DESERT']]
 
-biome_colors = {'SNOW': RGBColor(248, 248, 248),
-                'TUNDRA': RGBColor(221, 221, 187),
-                'BARE': RGBColor(187, 187, 187),
-                'SCORCHED': RGBColor(153, 153, 153),
-                'TAIGA': RGBColor(204, 212, 187),
-                'SHRUBLAND': RGBColor(194, 204, 187),
-                'GRASSLAND': RGBColor(192, 212, 170),
-                'TEMPERATE_DESERT': RGBColor(228, 232, 202),
-                'TEMPERATE_RAIN_FOREST': RGBColor(164, 196, 168),
-                'TEMPERATE_DECIDUOUS_FOREST': RGBColor(180, 201, 169),
-                'TROPICAL_RAIN_FOREST': RGBColor(156, 187, 169),
-                'TROPICAL_SEASONAL_FOREST': RGBColor(169, 204, 164),
-                'SUBTROPICAL_DESERT': RGBColor(233, 221, 199)}
+biome_colors = {'SNOW': sRGBColor(248, 248, 248),
+                'TUNDRA': sRGBColor(221, 221, 187),
+                'BARE': sRGBColor(187, 187, 187),
+                'SCORCHED': sRGBColor(153, 153, 153),
+                'TAIGA': sRGBColor(204, 212, 187),
+                'SHRUBLAND': sRGBColor(194, 204, 187),
+                'GRASSLAND': sRGBColor(192, 212, 170),
+                'TEMPERATE_DESERT': sRGBColor(228, 232, 202),
+                'TEMPERATE_RAIN_FOREST': sRGBColor(164, 196, 168),
+                'TEMPERATE_DECIDUOUS_FOREST': sRGBColor(180, 201, 169),
+                'TROPICAL_RAIN_FOREST': sRGBColor(156, 187, 169),
+                'TROPICAL_SEASONAL_FOREST': sRGBColor(169, 204, 164),
+                'SUBTROPICAL_DESERT': sRGBColor(233, 221, 199)}
 
 def color_lerp(color_1, color_2, coef):
     c1 = color_1.convert_to('rgb')
@@ -34,8 +36,8 @@ def color_lerp(color_1, color_2, coef):
     delta = np.array([c2.rgb_r - c1.rgb_r,
                           c2.rgb_g - c1.rgb_g,
                           c2.rgb_b - c1.rgb_b])
-    interp = orig + delta * ceof
-    return RGBColor(*interp)
+    interp = orig + delta * coef
+    return sRGBColor(*interp)
 
 
 class Tile(object):

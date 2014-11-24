@@ -1,10 +1,12 @@
 import numpy as np
+import tcod
+
 
 class Heightmap(object):
     def __init__(self, width, height):
         self.width = width
         self.height = height
-        self.data = np.zeros((width, height), dtype=np.float64)
+        self._data = np.zeros((width, height), dtype=np.float64)
 
     def __getitem__(self, index):
         # Bounds checking?
