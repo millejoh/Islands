@@ -32,8 +32,9 @@ DOUBLE_CLICK_SPEED = 1000  # Double click speed in milliseconds
 
 
 def clamp(low, high, expr):
-    """Return the numeric value of EXPR, constrained to the range [MIN
-    ... MAX]."""
+    """Return the numeric value of EXPR, constrained to the range
+    [LOW ... HIGH].
+    """
     return min((high, max((low, expr))))
 
 def root_to_win_coord(win, root_x, root_y):
@@ -638,18 +639,19 @@ class Window(tc.Console):
             self.draw_rect(0, 0, self.width, self.height, True, tcod.BKGND_SET)
 
     def resize(self, new_width, new_height):
-        self._untouch_windows()
-        resized_console = tcod.console_new(new_width, new_height)
-        if self.framed_p:
-            tcod.console_blit(self._c, 1, 1, self.width-2, self.height-2,
-                              resized_console, 1, 1)
-        else:
-            tcod.console_blit(self._c, 0, 0, self.width, self.height,
-                              resized_console, 0, 0)
-        self._c = resized_console
-        self.width = new_width
-        self.height = new_height
-        self._touch_windows()
+        if new_width > 2 and new_height > 2:
+            self._untouch_windows()
+            resized_console = tcod.console_new(new_width, new_height)
+            if self.framed_p:
+                tcod.console_blit(self._c, 1, 1, self.width-2, self.height-2,
+                                  resized_console, 1, 1)
+            else:
+                tcod.console_blit(self._c, 0, 0, self.width, self.height,
+                                  resized_console, 0, 0)
+            self._c = resized_console
+            self.width = new_width
+            self.height = new_height
+            self._touch_windows()
 
     def mouse_drag(self, mouse):
         root = tc.R.active_root
