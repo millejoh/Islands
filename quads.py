@@ -4,7 +4,7 @@ from itertools import chain
 
 import pyglet
 from pyglet.gl import *
-from pyglet2d import Shape
+#from pyglet2d import Shape
 import numpy as np
 
 from color import COLOR_TABLE
@@ -30,7 +30,7 @@ quad_texcoords = (0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 1.0, 1.0)
 quad_normals = (0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0)
 quad_indices = (0, 1, 2, 0, 2, 3)
 
-# arial10x10 = pyglet.image.load('arial10x10_alpha.png')
+#arial10x10 = pyglet.image.load('arial10x10_alpha.png')
 #arial_map = pyglet.image.ImageGrid(arial10x10, 8, 32)
 
 terminal_font = pyglet.image.load('terminal16x16_gs_ro.png')
