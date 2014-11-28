@@ -2,12 +2,14 @@ from math import cos, sin
 from random import uniform, sample, randint
 from itertools import chain
 
+
 import pyglet
 from pyglet.gl import *
 #from pyglet2d import Shape
 import numpy as np
 
 from color import COLOR_TABLE
+
 
 
 try:
@@ -36,13 +38,11 @@ quad_indices = (0, 1, 2, 0, 2, 3)
 terminal_font = pyglet.image.load('terminal16x16_gs_ro.png')
 terminal_map = pyglet.image.ImageGrid(terminal_font, 16, 16)
 
-
 def flatten(mlist):
     if type(mlist[0]) is list:
         return flatten(list(chain.from_iterable(mlist)))
     else:
         return mlist
-
 
 def rot2d(angle):
     """Angle is in radians."""

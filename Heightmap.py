@@ -2,7 +2,7 @@ from math import floor, ceil
 
 __author__ = 'millejoh'
 import numpy as np
-
+import libtcodpy
 
 def lerp(c0, c1, dx):
     """Calculated interpolated value between `c0` and `c1` given dx that is
@@ -16,6 +16,7 @@ class Heightmap(object):
         self.width = width
         self.height = height
         self.data = np.zeros((width, height), dtype=np.float64)
+        self._data = heightmap_new(width, height)
 
     def __getitem__(self, index):
         # Bounds checking?

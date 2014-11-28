@@ -23,7 +23,7 @@ class Heightmap(object):
     def __init__(self, width, height):
         self.width = width
         self.height = height
-        self._data = np.zeros((width, height), dtype=np.float64)
+        self._data = tcod.heightmap_new(width, height)
 
     def __getitem__(self, index):
         # Bounds checking?
@@ -32,11 +32,11 @@ class Heightmap(object):
         if type(x) is float and type(y) is float:
             return self.interpolated_value(x, y)
         else:
-            return self.data[x, y]
+            return tcod.heightmap_get_value(self._data, x, y)
 
     def copy(self):
         nhm = Heightmap(self.width, self.height)
-        nhm.data = np.copy(self.data)
+        tcod.heightmap_copy(self._data, nhm._data)
         return nhm
 
     def clear_map(self):
