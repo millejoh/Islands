@@ -35,6 +35,5 @@ default_font =  os.path.join(os.path.dirname(os.path.abspath(__file__)), os.path
 key_dispatch_table = {}
 
 import tcod.console as console
-import tcod.gui as gui
 
-__all__ = ['console', 'tools', 'gui', 'libtcodpy']
+__all__ = ['console', 'string', 'libtcodpy']

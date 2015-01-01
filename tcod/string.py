@@ -65,6 +65,6 @@ def color_to_control_string(color, bg_color_p=False):
                                      max(r, 1), max(g, 1), max(b, 1))
 
 
-def draw_string(win, x, y, string, dialog=False, background_flag = tcod.BKGND_SET):
+def draw_string(win, x, y, string, dialog=False):#, background_flag = tcod.BKGND_SET):
     xstr = make_colored_string(string, dialog, window=win)
     return xstr

@@ -1,11 +1,13 @@
 # Try to find libtcodpy
+import random as rand
 from uuid import uuid1
-import random as r
+
 from colormath.color_objects import sRGBColor
+
 #from colormath.color_conversions import convert_color
 import numpy as np
 import tcod
-from tcod.gui import Viewport
+from gui.window import Viewport
 from tcod.tools import Heightmap
 
 biomes = [['SNOW', 'SNOW', 'SNOW', 'TUNDRA', 'BARE', 'SCORCHED'],
@@ -83,8 +85,8 @@ class MapChunk(Viewport):
         max_radius = 0.2 * (width + height / 2.0)
         # Blob the map with hills
         for i in range(int(roughness * 20)):
-            radius = r.randint(0, max_radius)
-            x, y = r.randint(sx, sx + width), r.randint(sy, sy + height)
+            radius = rand.randint(0, max_radius)
+            x, y = rand.randint(sx, sx + width), rand.randint(sy, sy + height)
             e.add_hill(x, y, radius, radius * radius)
 
     def draw_terrain(self):
@@ -180,3 +182,15 @@ class gEntity(DefaultStructure):  # , pyDatalog.Mixin):
 
     def __repr__(self):
         return '<gEntity {}>'.format(self.eclass)
+
+
+if __name__ == '__main__':
+    r = tcod.console.RootConsole(80, 60)
+    map = MapChunk(tlx=10, tly=10, width=40, height=40, framed=True, map_width=120,
+                   map_height=120, view_tlx=0, view_tly=0, title='The Map')
+    map.random_island(0, 0, 60, 60)
+    player = gEntity(char='@', name='Player', color = 'blue')
+    map.add_actor(player)
+    map.on_update()
+    r.run()
+

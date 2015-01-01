@@ -4,28 +4,10 @@ A refactoring of non-class definitions from the gui module.
 
 import tcod
 import tcod.console as tc
-from tcod.events import MouseEvent, MouseDragEvent, KeyEvent
-
-
-AUTO_REDRAW = True
-OPAQUE = 1
-INVISIBLE = 0
-DIMMED = 75                # Common values for window_transparency
-BOLD_FACTOR = 1.4          # Multiplier for producing a "bold" version
-                           # of a color.
-CURRENT_MOUSE_EVENT = None
-MOUSE_X, MOUSE_Y = 0, 0
-FOCUS_CHANGED = False      # Transiently set to true when a window has
-                           # taken over focus
-WINDOW_STACK = []
-HIDDEN_WINDOW_STACK = []
-FOCUS_FADE_MODE = 'together'
-TOPWIN = None
-LAST_TOPWIN = None
-DRAG_DELAY = 0.05          # Drag delay time in seconds
-LAST_MOUSE_CLICK = None
-DOUBLE_CLICK_SPEED = 1000  # Double click speed in milliseconds
-
+import gui
+from gui.globals import *
+from tcod.events import MouseEvent, MouseDragEvent, MouseMoveEvent, MouseReleaseEvent, MousePressEvent, KeyEvent
+from tcod.gameloop import BasicEventLoop
 
 def clamp(low, high, expr):
     """Return the numeric value of EXPR, constrained to the range
@@ -157,7 +139,7 @@ def top_window_at(x, y, stack=WINDOW_STACK, override_modal=False):
         else:
             touching = [win for win in stack
                         if win.touches_spot(x, y) and
-                        not isinstance(win, GhostWindow)]
+                        not isinstance(win, gui.window.GhostWindow)]
             return touching[0] if len(touching) > 0 else touching
 
 
@@ -204,9 +186,9 @@ def fade_for_window(win):
     focus = window_with_mouse_focus()
     if win.transparency_unfocused is None or win is focus:
         return transparency_to_fade(win.transparency)
-    elif FOCUS_FADE_MODE == 'together' and not isinstance(focus, BackgroundWindow):
+    elif FOCUS_FADE_MODE == 'together' and not isinstance(focus, gui.window.BackgroundWindow):
         return transparency_to_fade(win.transparency)
-    elif isinstance(focus, Window) and win.raise_children_with_parent_p and \
+    elif isinstance(focus, gui.window.Window) and win.raise_children_with_parent_p and \
             (win in focus.children or focus in win.children):
         return transparency_to_fade(win.transparency)
     else:
@@ -285,9 +267,53 @@ def check_for_event(mask=tcod.EVENT_ANY):
     event_type = tcod.sys_check_for_event(mask, key, mouse)
     return event_type, mouse, key
 
+class GuiEventLoop(BasicEventLoop):
+
+    def __init__(self):
+        self.mouse_x = None
+        self.mouse_y = None
+        self.topwin = None
+        self.last_topwin = None
+        self.focus_changed = None
+
+    def step(self, root):
+        self.current_mouse_event = tcod.mouse_get_status()
+        self.focus_changed = False
+        self.poll_for_event(tcod.EVENT_ANY)
+        event_type = type(self.current_event)
+        #for (event_type, event) in events:
+        if issubclass(event_type, MouseEvent):
+            mouse = self.current_event
+            self.mouse_x, self.mouse_y = mouse.cx, mouse.cy
+            if event_type is MouseMoveEvent:
+                self.focus_changed = window_with_mouse_focus() != self.last_topwin
+                send_mouse_move_event(window_with_mouse_focus(), mouse)
+            elif event_type in (MousePressEvent, MouseReleaseEvent):
+                self.topwin = window_with_mouse_focus()
+                self.focus_changed = self.topwin != self.last_topwin
+                send_mouse_click_event(self.topwin, mouse)
+        elif issubclass(event_type, KeyEvent):
+            self.topwin = window_with_key_focus()
+            if self.topwin:
+                self.send_key_event(self.topwin, self.current_event,
+                                    self.mouse_x - self.topwin.tlx,
+                                    self.mouse_y - self.topwin.tly)
+        # That's done, now look at the state of the mouse
+        if self.current_mouse_event and self.current_mouse_event.lbutton and \
+                self.topwin and not self.topwin.hidden_p:
+            self.topwin.raise_window()
+            handle_drag_event(self.current_event)
+
+        if self.focus_changed:
+            self.last_topwin = self.topwin
+
+        self.process_windows()
+
+
+
 
 def gui_loop():
-    global CURRENT_MOUSE_EVENT, MOUSE_X, MOUSE_Y, TOPWIN, LAST_TOPWIN, FOCUS_CHANGED 
+    global CURRENT_MOUSE_EVENT, MOUSE_X, MOUSE_Y, TOPWIN, LAST_TOPWIN, FOCUS_CHANGED
     # Go through any (all) events in the queue
     CURRENT_MOUSE_EVENT = tcod.mouse_get_status()
     FOCUS_CHANGED = False
@@ -319,6 +345,7 @@ def gui_loop():
         LAST_TOPWIN = TOPWIN
 
     process_windows()
+
 
     
 def destroy_all_windows():

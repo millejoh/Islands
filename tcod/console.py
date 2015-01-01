@@ -3,6 +3,7 @@ from threading import Thread
 from collections import namedtuple
 
 import tcod
+import gui
 import color as color
 from tcod.string import make_colored_string
 
@@ -32,8 +33,8 @@ class Console(object):
         self.width = width
         self.height = height
         self._c = tcod.console_new(width, height)
-        self.foreground = tcod.white
-        self.background = tcod.black
+        self.default_foreground = tcod.white
+        self.default_background = tcod.black
 
     def __del__(self):
         tcod.console_delete(self._c)
@@ -271,8 +272,6 @@ class RootConsole(Thread, Console):
     active_root = None
     scratch = None
     temp_console = None
-    mouse_x = 0
-    mouse_y = 0
 
     @classmethod
     def screen_width(cls):
@@ -292,6 +291,20 @@ class RootConsole(Thread, Console):
                  background=tcod.darker_sepia,
                  font_file=tcod.default_font, datax='', fullscreen=False,
                  renderer=tcod.RENDERER_GLSL, max_fps=30):
+        """
+        Create a RootConsole object.
+
+        :param width:
+        :param height:
+        :param title:
+        :param background:
+        :param font_file:
+        :param datax:
+        :param fullscreen:
+        :param renderer:
+        :param max_fps:
+        :return:
+        """
         super().__init__()
         if os.path.exists(font_file):
             tcod.console_set_custom_font(bytes(font_file, 'utf-8'),
@@ -313,7 +326,7 @@ class RootConsole(Thread, Console):
     def flush(self):
         tcod.console_flush()
 
-    def run(self):
+    def run(self, gameloop_manager):
         RootConsole.active_root = self
         RootConsole.scratch = Console(self.width, self.height)
         RootConsole.temp_console = Console(self.width, self.height)
@@ -326,7 +339,7 @@ class RootConsole(Thread, Console):
             #events = sys_get_events()
             #self.handle_keys(key)
             tcod.console_clear(tcod.root_console)
-            tcod.gui.gui_loop()
+            gameloop_manager.step(self)
             tcod.console_flush()
 
 R = RootConsole

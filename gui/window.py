@@ -8,8 +8,9 @@ from math import floor
 
 import tcod
 import tcod.console as tc
-from tcod.events import MouseEvent, MouseDragEvent, KeyEvent
-from tcod.gui_utils import *
+from gui.globals import *
+import gui.utils as utils
+
 
 class Window(tc.Console):
     def __init__(self, tlx=0, tly=0, width=5, height=5, hidden=False,
@@ -160,10 +161,10 @@ class Window(tc.Console):
     def dirty_window(self):
         tlx, tly = self.tlx, self.tly
         w, h = self.width, self.height
-        tcod.console_set_dirty(clamp(0, (tc.R.screen_width() - 1), tlx),
-                               clamp(0, (tc.R.screen_height() - 1), tly),
-                               clamp(0, (tc.R.screen_width() - tlx), w),
-                               clamp(0, (tc.R.screen_height() - tly), h))
+        tcod.console_set_dirty(utils.clamp(0, (tc.R.screen_width() - 1), tlx),
+                               utils.clamp(0, (tc.R.screen_height() - 1), tly),
+                               utils.clamp(0, (tc.R.screen_width() - tlx), w),
+                               utils.clamp(0, (tc.R.screen_height() - tly), h))
 
     def destroy(self):
         """Destroy the window object, hiding it first if it is not already
@@ -220,7 +221,7 @@ class Window(tc.Console):
 
         """
 
-        return y == 0 and x > 0 and x < (tc.R.screen_width() - self.width)
+        return y == 0 and 0 < x < (tc.R.screen_width() - self.width)
 
     def move_window(self, tlx, tly):
         """Move window so top left corner is located at (TLX, TLY), relative
@@ -235,12 +236,12 @@ class Window(tc.Console):
     def touches_spot(self, x, y):
         """True if any part of the window covers or touches
         the point at (x, y)."""
-        x, y = translate_negative_coords(x, y)
+        x, y = utils.translate_negative_coords(x, y)
         return (self.tlx <= x <= self.brx) and (self.tly <= y <= self.bry)
 
     def is_touching(self, win):
         """True if window is touching or overlapping <win>."""
-        return rectangle_overlaps_p((self.tlx, self.tly, self.brx, self.bry),
+        return utils.rectangle_overlaps_p((self.tlx, self.tly, self.brx, self.bry),
                                     (win.tlx, win.tly, win.brx, win.bry))
 
     def windows_below(self):
@@ -309,18 +310,18 @@ class Window(tc.Console):
     def redraw_in_area(self, x1, y1, x2, y2, fade=None):
         """
         """
-        x1, y1 = translate_negative_coords(x1, y1)
-        x2, y2 = translate_negative_coords(x2, y2)
+        x1, y1 = utils.translate_negative_coords(x1, y1)
+        x2, y2 = utils.translate_negative_coords(x2, y2)
         tlx = max([self.tlx, x1])
         tly = max([self.tly, y1])
         brx = max([self.brx, x2])
         bry = max([self.bry, y2])
         tc.R.active_root.fill_char(' ', tlx, tly, brx - (tlx - 1), bry - (tly - 1))
-        winx, winy = screen_to_win_coord(self, (tlx, tly))
+        winx, winy = utils.screen_to_win_coord(self, (tlx, tly))
         self.blit(tc.R.active_root, winx, winy, (brx - tlx), (bry - tly),
                   tlx, tly,
-                  (fade or transparency_to_fade(self.transparency)),
-                  (fade or transparency_to_fade(self.transparency)))
+                  (fade or utils.transparency_to_fade(self.transparency)),
+                  (fade or utils.transparency_to_fade(self.transparency)))
 
     def prepare(self):
         if self.framed_p:
@@ -365,7 +366,7 @@ class Window(tc.Console):
         tc.R.temp_console.clear()
 
         self.raise_window()
-        copy_windows_to_console([win for win in WINDOW_STACK if win is not self],
+        utils.copy_windows_to_console([win for win in WINDOW_STACK if win is not self],
                                 tc.R.scratch)
         tc.R.scratch.blit(tc.R.temp_console, self.tlx, self.tly,
                           self.width, self.height,
@@ -376,8 +377,8 @@ class Window(tc.Console):
         key = tcod.Key()
         while mouse.lbutton:
             tcod.sys_check_for_event(tcod.EVENT_MOUSE, key, mouse)
-            tlx = clamp(0, swidth - self.width - 1, mouse.cx - offset_x)
-            tly = clamp(0, sheight - self.height - 1, mouse.cy - offset_y)
+            tlx = utils.clamp(0, swidth - self.width - 1, mouse.cx - offset_x)
+            tly = utils.clamp(0, sheight - self.height - 1, mouse.cy - offset_y)
             if not (tlx == self.tlx and tly == self.tly):
                 # Erase window
                 tc.R.temp_console.blit(root, 0, 0, width, height,
@@ -395,7 +396,7 @@ class Window(tc.Console):
         root = tc.R.active_root
 
         self.raise_window()
-        copy_windows_to_console([win for win in WINDOW_STACK if win is not self],
+        utils.copy_windows_to_console([win for win in WINDOW_STACK if win is not self],
                                 tc.R.scratch)
         tc.R.scratch.blit(tc.R.temp_console, self.tlx, self.tly, self.width,
                           self.height, 0, 0, 1.0, 1.0)
@@ -405,8 +406,8 @@ class Window(tc.Console):
         key = tcod.Key()
         while mouse.lbutton:
             tcod.sys_check_for_event(tcod.EVENT_MOUSE, key, mouse)
-            brx = clamp(self.tlx, tc.R.screen_width() - 1, mouse.cx)
-            bry = clamp(self.tly, tc.R.screen_height() - 1, mouse.cy)
+            brx = utils.clamp(self.tlx, tc.R.screen_width() - 1, mouse.cx)
+            bry = utils.clamp(self.tly, tc.R.screen_height() - 1, mouse.cy)
             if not (brx == self.brx and bry == self.bry):
                 # Erase window
                 tc.R.temp_console.blit(root, 0, 0, self.width, self.height,
@@ -533,7 +534,7 @@ class ListWindow(Window):
 
         if pagelen > self.all_items_line_cnt:
             self.offset = 0
-        self.cursor = clamp(0, linecnt, self.cursor)
+        self.cursor = utils.clamp(0, linecnt, self.cursor)
         if self.cursor < self.offset:
             self.offset = self.cursor
         if self.cursor >= pagelen + self.offset:
@@ -575,7 +576,7 @@ class ListWindow(Window):
 
         """
         old_cursor = self.cursor
-        self.cursor = clamp(0, max((0, len(self.items)-1)), idx)
+        self.cursor = utils.clamp(0, max((0, len(self.items)-1)), idx)
         if old_cursor != self.cursor and self.item_at_cursor():
             self.cursor_moved_to_item(self.item_at_cursor())
 

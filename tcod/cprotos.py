@@ -1,6 +1,6 @@
 
 from ctypes import *
-from libtcodpy import Color
+from tcod.libtcodpy import Color
 
 # HACK for return types
 c_void = c_int
