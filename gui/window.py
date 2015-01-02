@@ -8,13 +8,12 @@ from math import floor
 
 import tcod
 import tcod.console as tc
-from gui.globals import *
 import gui.utils as utils
 
 
 class Window(tc.Console):
     def __init__(self, tlx=0, tly=0, width=5, height=5, hidden=False,
-                 parent=None, title="", framed=False):
+                 parent=None, title="", framed=False, window_manager=None):
         """
         Window: Instances of this class and its subclasses represent windows on the screen.
 
@@ -61,11 +60,19 @@ class Window(tc.Console):
         else:
             self.parent = None
 
+        if window_manager is None:
+            if self.parent:
+                self.wmanager = self.parent.wmanager
+            else:
+                raise AttributeError
+        else:
+            self.wmanager = window_manager
+
         if self.hidden_p:
-            HIDDEN_WINDOW_STACK.insert(0, self)
+            self.wmanager.hidden_window_stack.insert(0, self)
         else:
             self._touch_windows()
-            WINDOW_STACK.insert(0, self)
+            self.wmanager.window_stack.insert(0, self)
 
     def __repr__(self):
         return "Window({w.tlx},{w.tly},{w.width},{w.height},title='{w.title}')".format(w=self)
@@ -84,7 +91,7 @@ class Window(tc.Console):
         """
         return self.tly + (self.height - 1)
 
-    def process_window(self):
+    def process_window(self, focus_changed=False):
         """
         Check if window needs not hidden and needs to be redrawn (either through changed_p or auto_redraw_p)
         and if so prepares the window and draws it to the root console.
@@ -100,17 +107,19 @@ class Window(tc.Console):
             self.dirty_window()
             self.changed_p = False
             self.last_update_time = tcod.sys_elapsed_milli()
-        elif FOCUS_CHANGED:
+        elif focus_changed:
             self.redraw_area(draw_window=True)
 
-    def raise_window(self, redraw=AUTO_REDRAW, simple_redraw=False, **keys):
+    def raise_window(self, redraw, simple_redraw=False, **keys):
         """
         """
         assert not self.hidden_p
+        if not redraw:
+            redraw = self.wmanager.auto_redraw
         if self.changed_p:
             self.prepare()
-        WINDOW_STACK.remove(self)
-        WINDOW_STACK.insert(0, self)
+        self.wmanager.window_stack.remove(self)
+        self.wmanager.window_stack.insert(0, self)
         self.window_did_change()
         self.dirty_window()
         for child in self.children:
@@ -122,13 +131,15 @@ class Window(tc.Console):
             else:
                 self.redraw_area()
 
-    def hide(self, redraw=AUTO_REDRAW):
+    def hide(self, redraw):
         """
         """
+        if not redraw:
+            redraw = self.wmanager.auto_redraw
         if redraw:
             self.redraw_area(draw_window=False)
         self._untouch_windows()
-        WINDOW_STACK.remove(self)
+        self.wmanager.window_stack.remove(self)
         if self.raise_children_with_parent_p and self.children:
             for win in self.children:
                 win.hide()
@@ -136,13 +147,15 @@ class Window(tc.Console):
             self.destroy()
         else:
             self.hidden_p = True
-            if self not in HIDDEN_WINDOW_STACK:
-                HIDDEN_WINDOW_STACK.insert(0, self)
+            if self not in self.wmanager.hidden_window_stack:
+                self.wmanager.hidden_window_stack.insert(0, self)
 
-    def unhide(self, redraw=AUTO_REDRAW):
+    def unhide(self, redraw):
+        if not redraw:
+            redraw = self.wmanager.auto_redraw
         self.hidden_p = False
-        HIDDEN_WINDOW_STACK.remove(self)
-        WINDOW_STACK.insert(0, self)
+        self.wmanager.hidden_window_stack.remove(self)
+        self.wmanager.window_stack.insert(0, self)
         if redraw:
             self.redraw_area(draw_window=True)
         if self.raise_children_with_parent_p and self.children:
@@ -170,21 +183,21 @@ class Window(tc.Console):
         """Destroy the window object, hiding it first if it is not already
         hidden.
         """
-        if self in WINDOW_STACK:
+        if self in self.wmanager.window_stack:
             self.hide()
         if self.parent:
             self.parent.children.remove(self)
         if len(self.children) > 0:
             for child in self.children:
                 child.destroy()
-        HIDDEN_WINDOW_STACK.remove(self)
+        self.wmanager.hidden_window_stack.remove(self)
         self.alive_p = False
 
     def _touch_windows(self):
         """Make window refresh it's list of windows it is currently
         touching/overlapping."""
 
-        touching = [win for win in WINDOW_STACK
+        touching = [win for win in self.wmanager.window_stack
                     if not (win is self) and self.is_touching(win)]
         for win in touching:
             if win not in self.touching:
@@ -246,11 +259,11 @@ class Window(tc.Console):
 
     def windows_below(self):
         """Return windows (if any) below current window in the window stack."""
-        return WINDOW_STACK[WINDOW_STACK.index(self):]
+        return self.wmanager.window_stack[self.wmanager.window_stack.index(self):]
 
     def windows_above(self):
         """Return windows (if any) above current window in the stack."""
-        return WINDOW_STACK[:WINDOW_STACK.index(self)]
+        return self.wmanager.window_stack[:self.wmanager.window_stack.index(self)]
 
     def windows_overlying(self):
         """List windows that both overlap current window and are above
@@ -266,7 +279,7 @@ class Window(tc.Console):
         return [win for win in self.windows_below() if win in self.touching]
 
     def windows_overlapping(self, include_window=True):
-        return [win for win in WINDOW_STACK
+        return [win for win in self.wmanager.window_stack
                 if self.is_touching(win) and (include_window and self is win)]
 
     def copy_to_console(self, console):
@@ -325,7 +338,7 @@ class Window(tc.Console):
 
     def prepare(self):
         if self.framed_p:
-            if WINDOW_STACK[0] is self:
+            if self.wmanager.window_stack[0] is self:
                 self.print_double_frame(0, 0, self.width, self.height, True,
                                         tcod.BKGND_SET,
                                         bytes(self.title, 'utf-8') if self.title else 0)
@@ -365,8 +378,8 @@ class Window(tc.Console):
         tc.R.scratch.clear()
         tc.R.temp_console.clear()
 
-        self.raise_window()
-        utils.copy_windows_to_console([win for win in WINDOW_STACK if win is not self],
+        self.raise_window(self.wmanager.auto_redraw)
+        utils.copy_windows_to_console([win for win in self.wmanager.window_stack if win is not self],
                                 tc.R.scratch)
         tc.R.scratch.blit(tc.R.temp_console, self.tlx, self.tly,
                           self.width, self.height,
@@ -395,8 +408,8 @@ class Window(tc.Console):
         brx, bry = 0, 0
         root = tc.R.active_root
 
-        self.raise_window()
-        utils.copy_windows_to_console([win for win in WINDOW_STACK if win is not self],
+        self.raise_window(True)
+        utils.copy_windows_to_console([win for win in self.wmanager.window_stack if win is not self],
                                 tc.R.scratch)
         tc.R.scratch.blit(tc.R.temp_console, self.tlx, self.tly, self.width,
                           self.height, 0, 0, 1.0, 1.0)
@@ -618,7 +631,7 @@ class Viewport(Window):
         """
 
         super().__init__(**keys)
-        self.transparency = OPAQUE
+        self.transparency = self.wmanager.opaque
         self.map_width = map_width
         self.map_height = map_height
         self.map_console = tc.Console(map_width, map_height)

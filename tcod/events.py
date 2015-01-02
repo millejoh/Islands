@@ -8,7 +8,7 @@ class Event(object):
         self.winy = winy
         self.time = tcod.sys_elapsed_milli()
 
-    # def __repr__(self):
+        # def __repr__(self):
     #     return "GUIEvent(window={self.window},winx={self.winx},winy={self.winy})".format(self=self)
 
 
@@ -17,6 +17,9 @@ class MouseEvent(Event):
         super().__init__(kwargs)
         self.state = mouse_state
         self.double_click = double_click
+
+    def __getattr__(self, item):
+        return self.state.__getattr__(item)
 
 class MousePressEvent(MouseEvent):
     pass
