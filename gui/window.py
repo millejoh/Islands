@@ -9,6 +9,7 @@ from math import floor
 import tcod
 import tcod.console as tc
 import gui.utils as utils
+from tcod.events import *
 
 
 class Window(tc.Console):
@@ -235,6 +236,17 @@ class Window(tc.Console):
         """
 
         return y == 0 and 0 < x < (tc.R.screen_width() - self.width)
+
+    def on_lower_window_border(self, x: int, y:int):
+        """
+        True if window coordinate (x, y) is on the window's lower border.
+
+        :param x: Window x coordinate.
+        :param y: Window y coordinate.
+        :return: Boolean.
+        """
+
+        return y == self.height-1 and 0 < x < (tc.R.screen_width() - self.width)
 
     def move_window(self, tlx, tly):
         """Move window so top left corner is located at (TLX, TLY), relative
@@ -479,9 +491,39 @@ class ListWindow(Window):
     def __repr__(self):
         return "ListWindow({w.tlx},{w.tly},{w.width},{w.height},title='{w.title}')".format(w=self)
 
+    def on_mouse_event(self, event):
+        if type(event) is MouseReleaseEvent:
+            pass
+
+    def on_key_event(self, event):
+        if type(event) is KeyPressEvent:
+            if event.vkey == tcod.KEY_UP:
+                self.move_cursor_by(-1)
+                if self.cursor < self.offset:
+                    self.offset -= 1
+            elif event.vkey == tcod.KEY_DOWN:
+                self.move_cursor_by(1)
+                if self.cursor > self.offset+self.page_length:
+                    self.offset += 1
+            elif event.vkey == tcod.KEY_PAGEUP:
+                self.offset -= self.page_length
+                self.move_cursor_by(-self.page_length)
+            elif event.vkey == tcod.KEY_PAGEDOWN:
+                self.offset += self.page_length
+                self.move_cursor_by(+self.page_length)
+
     def add_item(self, item, string, hotkey=None, prepend=False):
+        """
+        Add a ListItem to the list view.
+
+        :param item: The list item (some sort of object).
+        :param string: Printable string representation of the list item.
+        :param hotkey: Hotkey to quickly access the list item.
+        :param prepend: If true, place at top of list view.
+        :return:
+        """
         if prepend:
-            self.insert(0, item)
+            self.insert(0, ListItem(string, item, hotkey))
         else:
             self.items.append(ListItem(string, item, hotkey))
 
@@ -574,7 +616,8 @@ class ListWindow(Window):
         pagewidth = self.width - (0 if self.use_borders else 2)
         if self.wrap_items:
             border_offset = 0 if self.use_borders else 1
-            self.write_rect(x, y, pagewidth, self.height-y-border_offset, item.str)
+            self.draw_string(x, y, pagewidth, self.height-y-border_offset, item.str,
+                             self.background_highlight if cursorp else None)
             return self.get_text_height(x, y, pagewidth, self.height-border_offset,
                                         item.str) - 1
         else:
@@ -593,15 +636,40 @@ class ListWindow(Window):
         if old_cursor != self.cursor and self.item_at_cursor():
             self.cursor_moved_to_item(self.item_at_cursor())
 
+    def move_cursor_by(self, step: int):
+        """
+        Move cursor.
+
+        :param step:
+        :return:
+        """
+        self.move_cursor_to(self.cursor+step)
+
+    def move_cursor_to_end(self):
+        self.move_cursor_to(len(self.items))
+
+
 
 class LogWindow(ListWindow):
     def __init__(self, show_tail=False, max_messages=50, **kwargs):
         super().__init__(**kwargs)
         self.show_tail = show_tail
         self.max_messages = max_messages
+        self.raw_messages = []
 
-    
-    
+    def wrap_items(self):
+        pass
+
+    def add_message(self, msg):
+        self.raw_messages.append(msg)
+        while len(self.raw_messages) > self.max_messages:
+            self.raw_messages.pop()
+        if len(msg) > (self.width-2):
+            self.wrap_items()
+        else:
+            self.add_item(msg, msg)
+        self.move_cursor_to_end()
+        self.window_did_change()
         
 class WindowTheme(object):
     def __init__(self, fore, back, fore_highlight, back_highlight,

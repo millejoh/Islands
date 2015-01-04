@@ -18,8 +18,23 @@ class MouseEvent(Event):
         self.state = mouse_state
         self.double_click = double_click
 
-    def __getattr__(self, item):
-        return self.state.__getattr__(item)
+    @property
+    def cpos(self):
+        """
+        Return coordinate of console cell where mouse event occurred.
+
+        :return: (x, y) coordinate of mouse event.
+        """
+        return self.state.cx, self.state.cy
+
+    @property
+    def pos(self):
+        """
+        Absolute coordinate of mouse event in pixels relative to upper left corner of window.
+
+        :return: (x, y) coordinate in pixels.
+        """
+        return self.state.x, self.state.y
 
 class MousePressEvent(MouseEvent):
     pass
@@ -40,6 +55,10 @@ class KeyEvent(Event):
     def __init__(self, key, **kwargs):
         super().__init__(**kwargs)
         self.key_info = key
+
+    @property
+    def vkey(self):
+        return self.key_info.vk
 
 class KeyPressEvent(KeyEvent):
     pass
