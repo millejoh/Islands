@@ -27,17 +27,17 @@ snowHeight = 0.905  # 0.785f;
 # TCOD's land color map
 # ---------------------
 
-COLOR_KEY_MAX_SEA = int(sandHeight * 255) - 1
-COLOR_KEY_MIN_LAND = int(sandHeight * 255)
+COLOR_KEY_MAX_SEA = round(sandHeight * 255) - 1
+COLOR_KEY_MIN_LAND = round(sandHeight * 255)
 keyIndex = [0,
             COLOR_KEY_MAX_SEA,
             COLOR_KEY_MIN_LAND,
-            int(grassHeight * 255),
-            int(grassHeight * 255) + 10,
-            int(rockHeight * 255),
-            int(rockHeight * 255) + 10,
-            int(snowHeight * 255),
-            int(snowHeight * 255) + 10,
+            round(grassHeight * 255),
+            round(grassHeight * 255) + 10,
+            round(rockHeight * 255),
+            round(rockHeight * 255) + 10,
+            round(snowHeight * 255),
+            round(snowHeight * 255) + 10,
             255]
 
 keyColor = [tcod.Color(0, 0, 50),  # deep water
@@ -151,14 +151,14 @@ class WorldGenerator(object):
         return self._hm.interpolated_value(x, y)
 
     def real_altitude(self, x, y):
-        ih = clamp(0, 255, 256 * int(self.getInterpolatedAltitude(x, y)))
+        ih = clamp(0, 255, 256 * round(self.getInterpolatedAltitude(x, y)))
         (i0, i1) = find_index(altIndexes, ih)
 
         return altitudes[i0] + (altitudes[i1] - altitudes[i0]) * (ih - altIndexes[i0]) / (
             altIndexes[i1] - altIndexes[i0])
 
     def precipitation(self, x, y):
-        iprec = clamp(0, 255, 256 * int(self._hm_precip[x, y]))  # tcod.heightmap_get_value(self._hm_precip, x,y)))
+        iprec = clamp(0, 255, 256 * round(self._hm_precip[x, y]))  # tcod.heightmap_get_value(self._hm_precip, x,y)))
         (i0, i1) = find_index(precIndexes, iprec)
 
         return precipitations[i0] + (precipitations[i1] - precipitations[i0]) * (iprec - precIndexes[i0]) / (
@@ -168,7 +168,7 @@ class WorldGenerator(object):
         return self._hm_temperature[x, y]
 
     def biome(self, x, y):
-        return self._biome_map[int(x), int(y)]
+        return self._biome_map[round(x), round(y)]
 
     def interpolated_normal(self, x, y):
         return self._hm2.normal(x, y, sandHeight)
@@ -191,7 +191,7 @@ class WorldGenerator(object):
         for x in range(self.width):
             for y in range(self.height):
                 h = self._hm[x, y]
-                ih = int(h * 255)
+                ih = round(h * 255)
                 ih = clamp(0, 255, ih)
                 heightcount[ih] += 1
 

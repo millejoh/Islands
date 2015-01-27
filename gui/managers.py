@@ -23,6 +23,14 @@ class WindowManager(object):
         self.bold_factor = bold_factor
         self.focus_fade_mode = focus_fade_mode
 
+    @property
+    def screen_width(self):
+        return self.rootc.width
+
+    @property
+    def screen_height(self):
+        return self.rootc.height
+
     def top_window_at(self, x, y, stack=None, override_modal=False):
         """Return the window nearest the top of *WINDOW-STACK* which touches X,Y.
 

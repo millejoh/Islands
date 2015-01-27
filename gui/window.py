@@ -694,8 +694,21 @@ class WindowTheme(object):
 
 class Viewport(Window):
 
-    def __init__(self, map_width, map_height, view_tlx, view_tly, **keys):
+    def __init__(self, map_width=5, map_height=5, view_tlx=0, view_tly=0, **keys):
         """
+        A Window for views of map-like objects that contain regions larger than the dimensions of
+        the window.
+
+        :param tlx: X-coord of top left of window. If negative then position is relative to bottom right of screen.
+        :param tly: Y-coord of top left of window. If negative then position is relative to bottom right of screen.
+        :param width: Width in columns. If negative then that many columns less than the width of the screen.
+        :param height: Height in rows. If negative then that many rows less the height of the screen.
+        :param map_width: Width of the map region (must be at least as large as width).
+        :param map_height: Height of the map region (must be at least as large as height).
+        :param view_tlx: X-coord of top left region of map in the viewable portion of hte window.
+        :param view_tly: Y-coord of top left region of map in the viewable portion of hte window.
+        :param keys: Additional parameters accepted by Window objects.
+        :return: A Viewport object.
         """
 
         super().__init__(**keys)

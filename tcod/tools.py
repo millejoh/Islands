@@ -34,6 +34,13 @@ class Heightmap(object):
         else:
             return tcod.heightmap_get_value(self._data, x, y)
 
+    def __setitem__(self, index, value):
+        x, y = index
+        assert x < self.width and y < self.height
+        if type(x) is float and type(y) is float:
+            x, y = self.interpolated_value(x, y)
+        tcod.heightmap_set_value(self._data, x, y, value)
+
     def copy(self):
         nhm = Heightmap(self.width, self.height)
         tcod.heightmap_copy(self._data, nhm._data)
@@ -48,7 +55,7 @@ class Heightmap(object):
     def normalize(self, min=0.0, max=1.0):
         """Normalize heightmap values between <min> and <max>.
 
-        The heightmape is translated and scaled so that the lowest
+        The heightmap is translated and scaled so that the lowest
         cell value becomes min and the highest cell value becomes max
         min < max."""
         # max(data)*m+b = max
@@ -58,16 +65,13 @@ class Heightmap(object):
         # min(data)*m+max-max(data)*m=min
         # m*(min(data)-max(data)) = min-max
         # m = (min-max)/(min(data)-max(data))
-        h_max, h_min = np.amax(self.data), np.amin(self.data)
-        m = min - max / (h_min - h_max)
-        b = max - h_max * m
-        self.data = self.data*m + b
+        tcod.heightmap_normalize(self._data, min, max)
 
     def lerp(self, hm2, hm_result, coef):
         return tcod.heightmap_lerp_hm(self._data, self._data, hm_result, coef)
 
     def interpolated_value(self, x, y):
-        """Return interpolated height for noninteger coordinates.
+        """Return interpolated height for non-integer coordinates.
 
         x, y -- Coordinates of map cell."""
         return tcod.heightmap_get_interpolated_value(self._data, x, y)
@@ -122,6 +126,10 @@ class Heightmap(object):
         tcod.heightmap_kernel_transform(self._data, kernel_size, dx, dy, weight,
                                         min_level, max_level)
     def as_ndarray(self):
+        """Return an ndarray of holding the contents of the Heightmap.
+
+        :return: Numpy ndarray representation of the tcod Heightmap.
+        """
         w, h = self.width, self.height
         ndarray = np.zeros((self.width,self.height),dtype=float)
         for i in range(w):

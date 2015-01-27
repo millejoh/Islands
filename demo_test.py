@@ -1,10 +1,12 @@
 __author__ = 'millejoh'
 
 import tcod, tcod.events
+import numpy as np
 from tcod.console import RootConsole
 from tcod.gameloop import BasicEventLoop
 from gui.managers import GuiEventLoop
-from gui.window import Window, ListWindow
+from gui.window import Window, ListWindow, Viewport
+from worldgen import WorldGenerator
 
 class DemoGame(BasicEventLoop):
 
@@ -17,7 +19,6 @@ class DemoGame(BasicEventLoop):
         root.draw_string(0, 3, "This is {blue}blue{/}.",bg_color=tcod.light_flame)
         if issubclass(type(self.current_event), tcod.events.KeyReleaseEvent) and self.current_event.key_info.vk == tcod.KEY_ESCAPE:
             root.end_game = True
-
 
 class DemoGuiGame(GuiEventLoop):
     def initialize(self):
@@ -41,11 +42,53 @@ class DemoGuiGame(GuiEventLoop):
         start = tcod.sys_elapsed_milli()
         super().step(root)
         self.print_debug_info()
-        self.game_step()
+        #self.game_step()
         end = tcod.sys_elapsed_milli()
+
+class WorldView(Viewport):
+    def __init__(self, **keys):
+        super().__init__(**keys)
+        self.world_factory = WorldGenerator(self.map_width, self.map_height)
+        self.world_factory.build_base_map()
+        self.elevation = self.world_factory._hm
+
+    def draw_elevations(self, as_color=True):
+        for x, y in zip(range(self.map_width), range(self.map_height)):
+            if as_color:
+                intensity = tcod.color_lerp(tcod.black, tcod.white,
+                                            self.elevation[x, y] / 100.0)
+            self.map_console[x, y] = (' ', tcod.white, intensity)
+
+    def on_update(self):
+        self.clear_map()
+        self.draw_elevations()
+
+
+class WorldGame(GuiEventLoop):
+    def initialize(self):
+        w, h = self.window_manager.screen_width, self.window_manager.screen_height
+        self.world_view = WorldView(tlx=0, tly=0, width=round(w*0.6), height=round(h*0.6),
+                                    map_width=w, map_height=h,
+                                    view_tlx=0, view_tly=0, framed=False,
+                                    window_manager=self.window_manager)
+
+    def print_debug_info(self):
+        fps = tcod.sys_get_fps()
+        root.write(0,0,"Time elapsed = {0}".format(tcod.sys_elapsed_milli()))
+        root.write(0,1,"FPS = {0}".format(fps))
+        root.write(0,2, "Current event = {0}.".format(self.current_event))
+
+    def step(self, root):
+        start = tcod.sys_elapsed_milli()
+        self.world_view.on_update()
+        super().step(root)
+        self.print_debug_info()
+        #self.game_step()
+        end = tcod.sys_elapsed_milli()
+
 
 if __name__ == '__main__':
     root = RootConsole(80, 60)
-    game = DemoGuiGame(root)
+    game = WorldGame(root)
     game.initialize()
     root.run(game)
