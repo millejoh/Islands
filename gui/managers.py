@@ -2,16 +2,17 @@ __author__ = 'millejoh'
 
 import tcod
 import gui.window
+from tcod.console import RootConsole
 from tcod.gameloop import BasicEventLoop
 from tcod.events import *
 from gui.utils import translate_negative_coords, transparency_to_fade
 
 
 class WindowManager(object):
-    def __init__(self, root_console, auto_redraw=True, opaque=1, invisible=0, dimmed=75, bold_factor=1.4,
+    def __init__(self, screen_width, screen_height, auto_redraw=True, opaque=1, invisible=0, dimmed=75, bold_factor=1.4,
                  focus_fade_mode='together'):
-        assert root_console is not None
-        self.rootc = root_console
+        #assert root_console is not None
+        self.rootc = RootConsole(screen_width, screen_height)
         self.window_stack = []
         self.hidden_window_stack = []
         self.topwin = None
@@ -139,17 +140,17 @@ class WindowManager(object):
 
 
 class GuiEventLoop(BasicEventLoop):
-    def __init__(self, root_console, drag_delay=0.05, double_click_speed=1000, window_manager=None):
+    def __init__(self, window_manager, drag_delay=0.05, double_click_speed=1000):
         self.mouse_x = 0
         self.mouse_y = 0
         self.last_mouse_click = None
         self.drag_delay = drag_delay
         self.double_click_speed = double_click_speed
-        if window_manager is None:
-            self.window_manager = WindowManager(root_console)
-        else:
-            self.window_manager = window_manager
+        self.window_manager = window_manager
         super().__init__()
+
+    def run(self):
+        self.window_manager.rootc.run(self)
 
     def window_with_mouse_focus(self):
         """Return the topmost window under the mouse pointer."""

@@ -19,25 +19,25 @@ biomeDiagram = [
     # tropical climate (above 20 degC)
     ['HOT_DESERT', 'THORN_FOREST', 'TROPICAL_DRY_FOREST', 'TROPICAL_EVERGREEN_FOREST', 'TROPICAL_EVERGREEN_FOREST']]
 
-sandHeight = 0.12
-grassHeight = 0.16  # 0.315f;
-rockHeight = 0.655
-snowHeight = 0.905  # 0.785f;
+SAND_HEIGHT = 0.12
+GRASS_HEIGHT = 0.16  # 0.315f;
+ROCK_HEIGHT = 0.655
+SNOW_HEIGHT = 0.905  # 0.785f;
 
 # TCOD's land color map
 # ---------------------
 
-COLOR_KEY_MAX_SEA = round(sandHeight * 255) - 1
-COLOR_KEY_MIN_LAND = round(sandHeight * 255)
+COLOR_KEY_MAX_SEA = round(SAND_HEIGHT * 255) - 1
+COLOR_KEY_MIN_LAND = round(SAND_HEIGHT * 255)
 keyIndex = [0,
             COLOR_KEY_MAX_SEA,
             COLOR_KEY_MIN_LAND,
-            round(grassHeight * 255),
-            round(grassHeight * 255) + 10,
-            round(rockHeight * 255),
-            round(rockHeight * 255) + 10,
-            round(snowHeight * 255),
-            round(snowHeight * 255) + 10,
+            round(GRASS_HEIGHT * 255),
+            round(GRASS_HEIGHT * 255) + 10,
+            round(ROCK_HEIGHT * 255),
+            round(ROCK_HEIGHT * 255) + 10,
+            round(SNOW_HEIGHT * 255),
+            round(SNOW_HEIGHT * 255) + 10,
             255]
 
 keyColor = [tcod.Color(0, 0, 50),  # deep water
@@ -54,7 +54,7 @@ keyColor = [tcod.Color(0, 0, 50),  # deep water
 # Altitude color map
 # ------------------
 
-altIndexes = [0, 15, (int)(sandHeight * 255), (int)(sandHeight * 255) + 1,
+altIndexes = [0, 15, round(SAND_HEIGHT * 255), round(SAND_HEIGHT * 255) + 1,
               80, 130, 195, 255]
 altitudes = [-2000, -1000, -100, 0, 500, 1000, 2500, 4000]  # in meters
 
@@ -144,6 +144,19 @@ class WorldGenerator(object):
         self.wgRng = tcod.random_get_instance()
         self.noise = tcod.noise_new(2, random=self.wgRng)
 
+    def generate(self):
+        # TODO: Add progress indication/messages.
+        self.build_base_map()
+        self.compute_precipitation()
+        self.erode_map()
+        self.smooth_map()
+        self.set_land_mass(0.6, SAND_HEIGHT)
+        for i in range(round(self.width*self.height/3000)):
+            self.generate_rivers()
+        self.smooth_precipitations()
+        self.compute_temperatures_and_biomes()
+        self.compute_colors()
+        
     def altitude(self, x, y):
         return self._hm[x, y]
 
@@ -161,8 +174,8 @@ class WorldGenerator(object):
         iprec = clamp(0, 255, 256 * round(self._hm_precip[x, y]))  # tcod.heightmap_get_value(self._hm_precip, x,y)))
         (i0, i1) = find_index(precIndexes, iprec)
 
-        return precipitations[i0] + (precipitations[i1] - precipitations[i0]) * (iprec - precIndexes[i0]) / (
-            precIndexes[i1] - precIndexes[i0])
+        return precipitations[i0] + (precipitations[i1] - precipitations[i0]) * (iprec - precIndexes[i0]) / \
+            (precIndexes[i1] - precIndexes[i0])
 
     def temperature(self, x, y):
         return self._hm_temperature[x, y]
@@ -171,10 +184,10 @@ class WorldGenerator(object):
         return self._biome_map[round(x), round(y)]
 
     def interpolated_normal(self, x, y):
-        return self._hm2.normal(x, y, sandHeight)
+        return self._hm2.normal(x, y, SAND_HEIGHT)
 
     def on_sea_p(self, x, y):
-        return self.interpolated_altitude(x, y) <= sandHeight
+        return self.interpolated_altitude(x, y) <= SAND_HEIGHT
 
     def add_hill(self, cnt, base_radius, radius_var, height):
         for i in range(cnt):
@@ -219,14 +232,14 @@ class WorldGenerator(object):
         self._hm.add_fbm(self.noise, 2.20 * self.width / 400, 2.2 * self.width / 400, 0, 0, 10.0, 1.0, 2.05)
         self._hm.normalize()
         self._hm2 = self._hm.copy()
-        self.set_land_mass(0.6, sandHeight)
+        self.set_land_mass(0.6, SAND_HEIGHT)
         # Fix land/mountain ratio using x^3 curve above sea level
         for x in range(self.width):
             for y in range(self.height):
                 h = self._hm[x, y]
-                if h >= sandHeight:
-                    coef = (h - sandHeight) / (1.0 - sandHeight)
-                    h = sandHeight + coef * coef * coef * (1.0 - sandHeight)
+                if h >= SAND_HEIGHT:
+                    coef = (h - SAND_HEIGHT) / (1.0 - SAND_HEIGHT)
+                    h = SAND_HEIGHT + coef * coef * coef * (1.0 - SAND_HEIGHT)
                     self._hm[x, y] = h
 
         f = [0, 0]

@@ -4,7 +4,7 @@ import tcod, tcod.events
 import numpy as np
 from tcod.console import RootConsole
 from tcod.gameloop import BasicEventLoop
-from gui.managers import GuiEventLoop
+from gui.managers import GuiEventLoop, WindowManager
 from gui.window import Window, ListWindow, Viewport
 from worldgen import WorldGenerator
 
@@ -34,6 +34,7 @@ class DemoGuiGame(GuiEventLoop):
 
     def print_debug_info(self):
         fps = tcod.sys_get_fps()
+        root = self.window_manager.rootc
         root.write(0,0,"Time elapsed = {0}".format(tcod.sys_elapsed_milli()))
         root.write(0,1,"FPS = {0}".format(fps))
         root.write(0,2, "Current event = {0}.".format(self.current_event))
@@ -74,6 +75,7 @@ class WorldGame(GuiEventLoop):
 
     def print_debug_info(self):
         fps = tcod.sys_get_fps()
+        root = self.window_manager.rootc
         root.write(0,0,"Time elapsed = {0}".format(tcod.sys_elapsed_milli()))
         root.write(0,1,"FPS = {0}".format(fps))
         root.write(0,2, "Current event = {0}.".format(self.current_event))
@@ -88,7 +90,7 @@ class WorldGame(GuiEventLoop):
 
 
 if __name__ == '__main__':
-    root = RootConsole(80, 60)
-    game = WorldGame(root)
+    wm = WindowManager(80, 60)
+    game = WorldGame(wm)
     game.initialize()
-    root.run(game)
+    game.run()
