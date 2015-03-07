@@ -84,13 +84,15 @@ class WorldGame(GuiEventLoop):
         start = tcod.sys_elapsed_milli()
         self.world_view.on_update()
         super().step(root)
+        if self.current_key_event.pressed == True and self.current_key_event.vk == tcod.KEY_ESCAPE:
+            root.end_game == True
         self.print_debug_info()
         #self.game_step()
         end = tcod.sys_elapsed_milli()
 
 
-if __name__ == '__main__':
-    wm = WindowManager(80, 60)
-    game = WorldGame(wm)
-    game.initialize()
-    game.run()
+# if __name__ == '__main__':
+#     wm = WindowManager(80, 60)
+#     game = WorldGame(wm)
+#     game.initialize()
+#     game.run()

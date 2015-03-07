@@ -138,7 +138,6 @@ class WindowManager(object):
             win.destroy()
 
 
-
 class GuiEventLoop(BasicEventLoop):
     def __init__(self, window_manager, drag_delay=0.05, double_click_speed=1000):
         self.mouse_x = 0

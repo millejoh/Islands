@@ -262,6 +262,8 @@ class WorldGenerator(object):
                                    smooth_weight, -1000, 1000)
         self._hm.normalize()
 
+    def compute_precipitation(self):
+        pass
 
 # Tests
 # -----
