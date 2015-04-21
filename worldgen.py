@@ -1,7 +1,11 @@
 # A direct translation of Jice's worlden tool.
-import tcod
-from tcod.tools import Heightmap
+#import tcod
+#from tcod.tools import Heightmap
 import numpy as np
+import random
+import noise
+from colour import Color
+from Heightmap import Heightmap
 from itertools import count
 
 # Height and Biome Constants
@@ -24,6 +28,13 @@ GRASS_HEIGHT = 0.16  # 0.315f;
 ROCK_HEIGHT = 0.655
 SNOW_HEIGHT = 0.905  # 0.785f;
 
+def rgb_color_int(r, g, b):
+    """Create colour.Color object from integer r,g b values.
+
+    Create a Color object from rgb values in integer range [0, 255].
+    """
+    return Color(rgb=(r/255, g/255, b/255))
+
 # TCOD's land color map
 # ---------------------
 
@@ -40,16 +51,16 @@ keyIndex = [0,
             round(SNOW_HEIGHT * 255) + 10,
             255]
 
-keyColor = [tcod.Color(0, 0, 50),  # deep water
-            tcod.Color(20, 20, 200),  # water-sand transition
-            tcod.Color(134, 180, 101),  # sand
-            tcod.Color(80, 120, 10),  # sand-grass transition
-            tcod.Color(17, 109, 7),  # grass
-            tcod.Color(30, 85, 12),  # grass-rock transisiton
-            tcod.Color(64, 70, 20),  # rock
-            tcod.Color(120, 140, 40),  # rock-snow transisiton
-            tcod.Color(208, 208, 239),  # snow
-            tcod.Color(255, 255, 255)]
+keyrgb_color_int = [rgb_color_int(0, 0, 50),  # deep water
+                    rgb_color_int(20, 20, 200),  # water-sand transition
+                    rgb_color_int(134, 180, 101),  # sand
+                    rgb_color_int(80, 120, 10),  # sand-grass transition
+                    rgb_color_int(17, 109, 7),  # grass
+                    rgb_color_int(30, 85, 12),  # grass-rock transisiton
+                    rgb_color_int(64, 70, 20),  # rock
+                    rgb_color_int(120, 140, 40),  # rock-snow transisiton
+                    rgb_color_int(208, 208, 239),  # snow
+                    rgb_color_int(255, 255, 255)]
 
 # Altitude color map
 # ------------------
@@ -58,14 +69,14 @@ altIndexes = [0, 15, round(SAND_HEIGHT * 255), round(SAND_HEIGHT * 255) + 1,
               80, 130, 195, 255]
 altitudes = [-2000, -1000, -100, 0, 500, 1000, 2500, 4000]  # in meters
 
-altColors = [tcod.Color(24, 165, 255),  # -2000
-             tcod.Color(132, 214, 255),  # -1000
-             tcod.Color(247, 255, 255),  # -100
-             tcod.Color(49, 149, 44),  # 0
-             tcod.Color(249, 209, 151),  # 500
-             tcod.Color(165, 148, 24),  # 1000
-             tcod.Color(153, 110, 6),  # 2500
-             tcod.Color(172, 141, 138)]  # 4000
+altrgb_color_ints = [rgb_color_int(24, 165, 255),  # -2000
+                     rgb_color_int(132, 214, 255),  # -1000
+                     rgb_color_int(247, 255, 255),  # -100
+                     rgb_color_int(49, 149, 44),  # 0
+                     rgb_color_int(249, 209, 151),  # 500
+                     rgb_color_int(165, 148, 24),  # 1000
+                     rgb_color_int(153, 110, 6),  # 2500
+                     rgb_color_int(172, 141, 138)]  # 4000
 
 
 # Precipitation color map
@@ -73,38 +84,38 @@ altColors = [tcod.Color(24, 165, 255),  # -2000
 precIndexes = [4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 50, 60, 70, 80, 100, 120, 140, 160, 255]
 precipitations = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 13, 15, 18, 20, 25, 30, 35, 40]  # cm / m2 / year
 
-precColors = [tcod.Color(128, 0, 0),  # < 4
-              tcod.Color(173, 55, 0),  # 4-8
-              tcod.Color(227, 102, 0),  # 8-12
-              tcod.Color(255, 149, 0),  # 12-16
-              tcod.Color(255, 200, 0),  # 16-20
-              tcod.Color(255, 251, 0),  # 20-24
-              tcod.Color(191, 255, 0),  # 24-28
-              tcod.Color(106, 251, 0),  # 28-32
-              tcod.Color(25, 255, 48),  # 32-36
-              tcod.Color(48, 255, 141),  # 36-40
-              tcod.Color(28, 255, 232),  # 40-50
-              tcod.Color(54, 181, 255),  # 50-60
-              tcod.Color(41, 71, 191),  # 60-70
-              tcod.Color(38, 0, 255),  # 70-80
-              tcod.Color(140, 0, 255),  # 80-100
-              tcod.Color(221, 0, 255),  # 100-120
-              tcod.Color(255, 87, 255),  # 120-140
-              tcod.Color(255, 173, 255),  # 140-160
-              tcod.Color(255, 206, 255)]  # > 160
+precrgb_color_ints = [rgb_color_int(128, 0, 0),  # < 4
+                      rgb_color_int(173, 55, 0),  # 4-8
+                      rgb_color_int(227, 102, 0),  # 8-12
+                      rgb_color_int(255, 149, 0),  # 12-16
+                      rgb_color_int(255, 200, 0),  # 16-20
+                      rgb_color_int(255, 251, 0),  # 20-24
+                      rgb_color_int(191, 255, 0),  # 24-28
+                      rgb_color_int(106, 251, 0),  # 28-32
+                      rgb_color_int(25, 255, 48),  # 32-36
+                      rgb_color_int(48, 255, 141),  # 36-40
+                      rgb_color_int(28, 255, 232),  # 40-50
+                      rgb_color_int(54, 181, 255),  # 50-60
+                      rgb_color_int(41, 71, 191),  # 60-70
+                      rgb_color_int(38, 0, 255),  # 70-80
+                      rgb_color_int(140, 0, 255),  # 80-100
+                      rgb_color_int(221, 0, 255),  # 100-120
+                      rgb_color_int(255, 87, 255),  # 120-140
+                      rgb_color_int(255, 173, 255),  # 140-160
+                      rgb_color_int(255, 206, 255)]  # > 160
 
 # Temperature color map
 # ---------------------
 
 tempIndexes = [0, 42, 84, 126, 168, 210, 255]
 temperatures = [-30, -20, -10, 0, 10, 20, 30]
-tempKeyColor = [tcod.Color(180, 8, 130),  # -30 degC
-                tcod.Color(32, 1, 139),  # -20 degC
-                tcod.Color(0, 65, 252),  # -10 degC
-                tcod.Color(37, 255, 236),  # 0 degC
-                tcod.Color(255, 255, 1),  # 10 degC
-                tcod.Color(255, 29, 4),  # 20 degC
-                tcod.Color(80, 3, 0)]  # 30 degC
+tempKeyrgb_color_int = [rgb_color_int(180, 8, 130),  # -30 degC
+                rgb_color_int(32, 1, 139),  # -20 degC
+                rgb_color_int(0, 65, 252),  # -10 degC
+                rgb_color_int(37, 255, 236),  # 0 degC
+                rgb_color_int(255, 255, 1),  # 10 degC
+                rgb_color_int(255, 29, 4),  # 20 degC
+                rgb_color_int(80, 3, 0)]  # 30 degC
 
 # What are these? They appear just before erode_map
 # ---------------
@@ -130,6 +141,9 @@ def find_index(indices, val):
             return i - 1, i
     return len(indices), len(indices) - 1
 
+def rand_float_range(min, max, random=random):
+    return (random.random() + min/max) * max
+
 
 class WorldGenerator(object):
     def __init__(self, width, height):
@@ -141,8 +155,8 @@ class WorldGenerator(object):
         self._hm_temperature = Heightmap(width, height)
         self._biome_map = np.zeros((width, height))
         self._clouds = np.zeros((width, height))
-        self.wgRng = tcod.random_get_instance()
-        self.noise = tcod.noise_new(2, random=self.wgRng)
+        self.random = random.Random() # Random number generator
+        self.noise = noise.NoiseGenerator(2, random=self.random)
 
     def generate(self):
         # TODO: Add progress indication/messages.
@@ -193,9 +207,9 @@ class WorldGenerator(object):
         for i in range(cnt):
             min_radius = base_radius * (1.0 - radius_var)
             max_radius = base_radius * (1.0 + radius_var)
-            radius = tcod.random_get_float(self.wgRng, min_radius, max_radius)
-            xh = tcod.random_get_int(self.wgRng, 0, self.width - 1)
-            yh = tcod.random_get_int(self.wgRng, 0, self.height - 1)
+            radius = rand_float_range(min_radius, max_radius, self.random)
+            xh = self.random.randrange(self.wgRng, 0, self.width - 1)
+            yh = self.random.randrange(self.wgRng, 0, self.height - 1)
             self._hm.add_hill(float(xh), float(yh), radius, height)
 
     def set_land_mass(self, land_mass, water_level):
@@ -247,7 +261,7 @@ class WorldGenerator(object):
             f[0] = 6.0 * x / self.width
             for y in range(self.height):
                 f[1] = 6.0 * y / self.height
-                self._clouds[x, y] = 0.5 * (1.0 + 0.8 * tcod.noise_get_fbm(self.noise, f, 4.0, tcod.NOISE_SIMPLEX))
+                self._clouds[x, y] = 0.5 * (1.0 + 0.8 * self.noise.noise_get_fbm(self.noise, f, 4.0, 'SIMPLEX'))
 
     def smooth_map(self):
         # 3x3 kernel for smoothing operations
