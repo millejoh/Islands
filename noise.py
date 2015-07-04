@@ -103,8 +103,7 @@ def noise_wavelet_downsample(wav_from, wav_to, stride):
 
 
 class NoiseGenerator(object):
-    def __init__(self, dimensions, lacunarity=DEFAULT_LACUNARITY, hurst=DEFAULT_HURST, random=np.random.random,
-                 noise_type='PERLIN'):
+    def __init__(self, dimensions, lacunarity=DEFAULT_LACUNARITY, hurst=DEFAULT_HURST, random=np.random.random, noise_type='PERLIN'):
         """
 
         @param dimensions:
@@ -285,14 +284,13 @@ class NoiseGenerator(object):
         y2 = y0 - 1.0 + 2.0 * g2
         t0 = 0.5 - x0 * x0 - y0 * y0
 
-        n0 = None
         if t0 < 0.0:
             n0 = 0.0
         else:
             idx = (ii + self.map[jj]) & 0xFF
             t0 *= t0
             idx = self.map[idx]
-            simplex_gradient_2d(idx, x0, y0)
+            n0 = simplex_gradient_2d(idx, x0, y0)
             n0 *= t0 * t0
 
         t1 = 0.5 - x1 * x1 - y1 * y1
@@ -308,14 +306,13 @@ class NoiseGenerator(object):
 
         t2 = 0.5 - x2 * x2 - y2 * y2
 
-        n2 = None
         if t2 < 0.0:
             n2 = 0.0
         else:
             idx = (ii + 1 + self.map[(jj + 1) & 0xFF]) & 0xFF
             t2 *= t2
             idx = self.map[idx]  # Redundant?
-            simplex_gradient_2d(idx, x2, y2)
+            n2 = simplex_gradient_2d(idx, x2, y2)
             n2 *= t2 * t2
 
         return 40.0 * (n0 + n1 + n2)
@@ -366,6 +363,7 @@ class NoiseGenerator(object):
         jj = j % 256
         kk = k % 256
         t0 = 0.6 - x0 * x0 - y0 * y0 - z0 * z0
+
         if t0 < 0.0:
             n0 = 0.0
         else:
@@ -474,7 +472,7 @@ class NoiseGenerator(object):
         ll = l % 256
 
         t0 = 0.6 - x0 * x0 - y0 * y0 - z0 * z0 - w0 * w0
-
+        
         if t0 < 0.0:
             n0 = 0.0
         else:
@@ -546,10 +544,12 @@ class NoiseGenerator(object):
     def noise_fbm_simplex(self, f, octaves):
         return self.noise_fbm_int(f, octaves, self.simplex_noise)
 
-    def noise_get_fbm(self, coord, octaves):
-        if self.noise_type == 'PERLIN':
+    def get_fbm(self, coord, octaves, type=None):
+        if type is None:
+            type = self.noise_type
+        if type == 'PERLIN':
             return self.noise_fbm_perlin(coord, octaves)
-        elif self.noise_type == 'SIMPLEX':
+        elif type == 'SIMPLEX':
             return self.noise_fbm_simplex(coord, octaves)
-        elif self.noise_type == 'WAVELET':
+        elif type == 'WAVELET':
             return self.noise_fbm_wavelet(coord, octaves)

@@ -4,7 +4,7 @@
 import numpy as np
 import random
 import noise
-from Heightmap import Heightmap
+import Heightmap as hm
 from itertools import count
 
 # Height and Biome Constants
@@ -144,36 +144,44 @@ class WorldGenerator(object):
     def __init__(self, width, height):
         self.width = width
         self.height = height
-        self._hm = Heightmap(width, height)
-        self._hm2 = Heightmap(width, height)
-        self._hm_precip = Heightmap(width, height)
-        self._hm_temperature = Heightmap(width, height)
+        self._hm = hm.new(width, height)
+        self._hm2 = hm.new(width, height)
+        self._hm_precip = hm.new(width, height)
+        self._hm_temperature = hm.new(width, height)
         self._biome_map = np.zeros((width, height))
         self._clouds = np.zeros((width, height))
         self.random = random.Random() # Random number generator
-        self.noise = noise.NoiseGenerator(2, random=self.random)
+        self.noise = noise.NoiseGenerator(2)
 
     def generate(self):
         # TODO: Add progress indication/messages.
+        print("Building heightmap...")
         self.build_base_map()
+        print("Calculating precipitation...")
         self.compute_precipitation()
+        print("Eroding...")
         self.erode_map()
+        print("Smoothing...")
         self.smooth_map()
         self.set_land_mass(0.6, SAND_HEIGHT)
+        print("Generating rivers...")
         for i in range(round(self.width*self.height/3000)):
             self.generate_rivers()
+        print("Smoothing precipitations...")
         self.smooth_precipitations()
+        print("Determining temperature and biomes...")
         self.compute_temperatures_and_biomes()
+        print("Setting colors...")
         self.compute_colors()
         
     def altitude(self, x, y):
         return self._hm[x, y]
 
     def interpolated_altitude(self, x, y):
-        return self._hm.interpolated_value(x, y)
+        return hm.interpolated_value(self._hm, x, y)
 
     def real_altitude(self, x, y):
-        ih = clamp(0, 255, 256 * round(self.getInterpolatedAltitude(x, y)))
+        ih = clamp(0, 255, 256 * round(self.interpolated_altitude(x, y)))
         (i0, i1) = find_index(altIndexes, ih)
 
         return altitudes[i0] + (altitudes[i1] - altitudes[i0]) * (ih - altIndexes[i0]) / (
@@ -202,10 +210,10 @@ class WorldGenerator(object):
         for i in range(cnt):
             min_radius = base_radius * (1.0 - radius_var)
             max_radius = base_radius * (1.0 + radius_var)
-            radius = rand_float_range(min_radius, max_radius, self.random)
-            xh = self.random.randrange(self.wgRng, 0, self.width - 1)
-            yh = self.random.randrange(self.wgRng, 0, self.height - 1)
-            self._hm.add_hill(float(xh), float(yh), radius, height)
+            radius = self.random.randrange(int(min_radius), int(max_radius))
+            xh = self.random.randrange(0, self.width)
+            yh = self.random.randrange(0, self.height)
+            hm.add_hill(self._hm, xh, yh, radius, height)
 
     def set_land_mass(self, land_mass, water_level):
         "Ensure that a proportion <land_mass | [0,1]> of the map is above sea level."
@@ -237,9 +245,9 @@ class WorldGenerator(object):
 
     def build_base_map(self):
         self.add_hill(600, 16 * self.width / 200, 0.7, 0.3)
-        self._hm.normalize()
-        self._hm.add_fbm(self.noise, 2.20 * self.width / 400, 2.2 * self.width / 400, 0, 0, 10.0, 1.0, 2.05)
-        self._hm.normalize()
+        hm.normalize(self._hm)
+        hm.add_fbm(self._hm, self.noise, 2.20 * self.width / 400, 2.2 * self.width / 400, 0, 0, 10, 1.0, 2.05)
+        hm.normalize(self._hm)
         self._hm2 = self._hm.copy()
         self.set_land_mass(0.6, SAND_HEIGHT)
         # Fix land/mountain ratio using x^3 curve above sea level
@@ -256,7 +264,7 @@ class WorldGenerator(object):
             f[0] = 6.0 * x / self.width
             for y in range(self.height):
                 f[1] = 6.0 * y / self.height
-                self._clouds[x, y] = 0.5 * (1.0 + 0.8 * self.noise.noise_get_fbm(self.noise, f, 4.0, 'SIMPLEX'))
+                self._clouds[x, y] = 0.5 * (1.0 + 0.8 * self.noise.get_fbm(f, 4, 'SIMPLEX'))
 
     def smooth_map(self):
         # 3x3 kernel for smoothing operations
@@ -265,15 +273,30 @@ class WorldGenerator(object):
         smooth_dy = [-1, -1, -1, 0, 0, 0, 1, 1, 1]
         smooth_weight = [2, 8, 2, 8, 20, 8, 2, 8, 2]
 
-        self._hm.kernel_transform(smooth_ks, smooth_dx, smooth_dy,
-                                  smooth_weight, -1000, 1000)
-        self._hm2.kernel_transform(smooth_ks, smooth_dx, smooth_dy,
-                                   smooth_weight, -1000, 1000)
-        self._hm.normalize()
+        hm.kernel_transform(self._hm, smooth_ks, smooth_dx, smooth_dy,
+                            smooth_weight, -1000, 1000)
+        hm.kernel_transform(self._hm2, smooth_ks, smooth_dx, smooth_dy,
+                            smooth_weight, -1000, 1000)
+        hm.normalize(self._hm)
 
     def compute_precipitation(self):
         pass
 
+    def erode_map(self):
+        pass
+
+    def generate_rivers(self):
+        pass
+
+    def smooth_precipitations(self):
+        pass
+
+    def compute_temperatures_and_biomes(self):
+        pass
+
+    def compute_colors(self):
+        pass
+    
 # Tests
 # -----
 
