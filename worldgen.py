@@ -6,6 +6,7 @@ import random
 import noise
 import Heightmap as hm
 from itertools import count
+from numba import jit
 
 # Height and Biome Constants
 # --------------------------
@@ -206,6 +207,7 @@ class WorldGenerator(object):
     def on_sea_p(self, x, y):
         return self.interpolated_altitude(x, y) <= SAND_HEIGHT
 
+    @jit
     def add_hill(self, cnt, base_radius, radius_var, height):
         for i in range(cnt):
             min_radius = base_radius * (1.0 - radius_var)
@@ -243,11 +245,12 @@ class WorldGenerator(object):
                     h = h * water_coef
                 self._hm[x, y] = h
 
+    @jit
     def build_base_map(self):
         self.add_hill(600, 16 * self.width / 200, 0.7, 0.3)
-        hm.normalize(self._hm)
+        self._hm = hm.normalize(self._hm)
         hm.add_fbm(self._hm, self.noise, 2.20 * self.width / 400, 2.2 * self.width / 400, 0, 0, 10, 1.0, 2.05)
-        hm.normalize(self._hm)
+        self._hm = hm.normalize(self._hm)
         self._hm2 = self._hm.copy()
         self.set_land_mass(0.6, SAND_HEIGHT)
         # Fix land/mountain ratio using x^3 curve above sea level
@@ -277,7 +280,7 @@ class WorldGenerator(object):
                             smooth_weight, -1000, 1000)
         hm.kernel_transform(self._hm2, smooth_ks, smooth_dx, smooth_dy,
                             smooth_weight, -1000, 1000)
-        hm.normalize(self._hm)
+        self._hm = hm.normalize(self._hm)
 
     def compute_precipitation(self):
         pass
@@ -296,7 +299,6 @@ class WorldGenerator(object):
 
     def compute_colors(self):
         pass
-    
 # Tests
 # -----
 

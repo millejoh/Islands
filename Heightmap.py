@@ -1,4 +1,5 @@
 from math import floor, ceil
+from numba import jit
 
 __author__ = 'millejoh'
 import numpy as np
@@ -21,8 +22,7 @@ def randomize(data, scale=1.0, translate=0.0):
 
 
 def clear_map(data):
-    w, h = data.shape
-    data = np.zeros((w, h), dtype=np.float64)
+    data[:,:] = 0.0
 
 
 def clamp(data, min_, max_):
@@ -38,8 +38,9 @@ def normalize(data, min_=0.0, max_=1.0):
     h_max, h_min = np.amax(data), np.amin(data)
     m = min_ - max_ / (h_min - h_max)
     b = max_ - h_max * m
+    print(m, b)
     data = data * m + b
-
+    return data
 
 def lerp(data, hm, coef):
     """Calculate linear interpolation between two maps.
@@ -78,6 +79,7 @@ def interpolated_value(data, x, y):
 def normal(self, x, y, waterlevel):
     pass
 
+@jit
 def add_hill(data, cx, cy, radius, height):
     d_width, d_height = data.shape
     radius2 = radius * radius
@@ -93,6 +95,8 @@ def add_hill(data, cx, cy, radius, height):
             if z > 0.0:
                 data[x, y] += z * coef
 
+
+@jit
 def add_fbm(data, noise, mulx, muly, addx, addy, octaves, delta, scale):
     "Perturb  by adding fbm noise values."
     width, height = data.shape
