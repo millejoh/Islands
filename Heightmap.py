@@ -1,4 +1,4 @@
-from math import floor, ceil
+from math import floor, ceil, sqrt
 from numba import jit
 
 __author__ = 'millejoh'
@@ -76,11 +76,40 @@ def interpolated_value(data, x, y):
     return lerp(top, bottom, dy)
 
 
-def normal(self, x, y, waterlevel):
-    pass
+def normal(data, x, y, water_level):
+    n = np.zeros(3)
+    w, h = data.shape
+    if x >= (w-1) or y >= (h-1):
+        return
+    h0 = interpolated_value(data, x  , y)
+    hx = interpolated_value(data, x+1, y)
+    hy = interpolated_value(data, x  , y+1)
+    if h0 < water_level:
+        h0 = water_level
+    if hx < water_level:
+        hx = water_level
+    if hy < water_level:
+        hy = water_level
+    # vx = 1       vy = 0
+    #      0            1
+    #      hx-h0        hy-h0
+    # vz = vx cross vy
+    n[0] = 255*(h0-hx)
+    n[1] = 255*(h0-hy)
+    n[2] = 16.0
+    # normalize
+    invlen=1.0 / sqrt(n[0]*n[0]+n[1]*n[1]+n[2]*n[2])
+    n[0]*=invlen
+    n[1]*=invlen
+    n[2]*=invlen
+
+    return n
+
 
 @jit
 def add_hill(data, cx, cy, radius, height):
+    """
+    """
     d_width, d_height = data.shape
     radius2 = radius * radius
     coef = height / radius2
@@ -94,6 +123,22 @@ def add_hill(data, cx, cy, radius, height):
             z = radius2 - xdist - (y - cy) * (y - cy)
             if z > 0.0:
                 data[x, y] += z * coef
+
+
+def dig_hill(data, hx, hy, radius, height):
+    w, h = data.shape
+    hradius2 = radius*radius
+    coef = height / hradius2
+    minx = max(0, hx - radius)
+    maxx = min(w, hx + radius)
+    miny = max(0, hy - radius)
+    maxy = min(h, hy + radius)
+    for x in range(minx, maxx):
+        xdist = (x - hx)*(x - hx)
+        for y in range(miny, maxy):
+            z = hradius2 - xdist - (y - hy) * (y - hy)
+            if z > 0.0:
+                data[x, y] -= z * coef
 
 
 @jit
@@ -155,5 +200,35 @@ def kernel_transform(data, kernel_size, dx, dy, weight, min_level, max_level):
     
     max_level = The transformation is only applied to cells which
                     value is <= maxLevel."""
-    pass
+    w, h = data.shape
+    raveled_data = data.ravel()
+    for x in range(w):
+        offset = x
+        for y in range(h):
+            if raveled_data[offset] >= min_level and raveled_data[offset] <= max_level:
+                val = 0.0
+                total_weight = 0.0
+                for i in range(kernel_size):
+                    nx = x + dx[i]
+                    ny = y + dy[i]
+                    if (0 <= nx <= w) and (0 <= ny <= h):
+                        val += weight[i] * data[nx, ny]
+                        total_weight += weight[i]
+                raveled_data[offset] = val/total_weight
+            offset += w
+
+def dig_bezier(data, px, py, radius_start, depth_start, radius_end, depth_end):
+    x_from = px[0]
+    y_from = py[0]
+    for i in range(1000):
+        t = i / 1000.0
+        it = 1.0 - t
+        x_to = int(px[0]*it*it*it + 3*px[1]*t*it*it + 3*px[2]*t*t*it + px[3]*t*t*t)
+        y_to = int(py[0]*it*it*it + 3*py[1]*t*it*it + 3*py[2]*t*t*it + py[3]*t*t*t)
+        if ( x_to != x_from or y_to != y_from ):
+            radius = radius_start + (radius_end - radius_start) * t
+            depth = depth_start + (depth_end - depth_start) * t
+            dig_hill(hm, x_to, y_to, radius, depth)
+            x_from= x_to
+            y_from= y_to
 
