@@ -240,9 +240,9 @@ class NoiseGenerator(object):
             return self.simplex_noise_4d(f)
 
     def simplex_noise_1d(self, f):
-        i0 = floor(f[0] * SIMPLEX_SCALE)
+        i0 = floor(f * SIMPLEX_SCALE)
         i1 = i0 + 1
-        x0 = f[0] * SIMPLEX_SCALE - i0
+        x0 = f * SIMPLEX_SCALE - i0
         x1 = x0 - 1.0
         t0 = 1.0 - x0 * x0
         t1 = 1.0 - x1 * x1

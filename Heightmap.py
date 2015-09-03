@@ -38,7 +38,6 @@ def normalize(data, min_=0.0, max_=1.0):
     h_max, h_min = np.amax(data), np.amin(data)
     m = min_ - max_ / (h_min - h_max)
     b = max_ - h_max * m
-    print(m, b)
     data = data * m + b
     return data
 
@@ -202,9 +201,9 @@ def kernel_transform(data, kernel_size, dx, dy, weight, min_level, max_level):
                     value is <= maxLevel."""
     w, h = data.shape
     raveled_data = data.ravel()
-    for x in range(w):
+    for x in range(w-1):
         offset = x
-        for y in range(h):
+        for y in range(h-1):
             if raveled_data[offset] >= min_level and raveled_data[offset] <= max_level:
                 val = 0.0
                 total_weight = 0.0

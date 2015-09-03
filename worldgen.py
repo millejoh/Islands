@@ -1,4 +1,4 @@
-# A direct translation of Jice's worlden tool.
+# A direct translation of Jice's worldgen tool.
 #import tcod
 #from tcod.tools import Heightmap
 import numpy as np
@@ -7,6 +7,9 @@ import noise
 import Heightmap as hm
 from itertools import count
 from numba import jit
+
+noise1d = noise.NoiseGenerator(1)
+noise2d = noise.NoiseGenerator(2)
 
 # Height and Biome Constants
 # --------------------------
@@ -53,7 +56,7 @@ keyrgb_color_int = [(0, 0, 50,),  # deep water
                     (80, 120, 10),  # sand-grass transition
                     (17, 109, 7),  # grass
                     (30, 85, 12),  # grass-rock transisiton
-                    (64, 70, 20),  # rock
+                    (64,  70, 20),  # rock
                     (120, 140, 40),  # rock-snow transisiton
                     (208, 208, 239),  # snow
                     (255, 255, 255)]
@@ -145,14 +148,13 @@ class WorldGenerator(object):
     def __init__(self, width, height):
         self.width = width
         self.height = height
-        self._hm = hm.new(width, height)
-        self._hm2 = hm.new(width, height)
-        self._hm_precip = hm.new(width, height)
+        self._hm = hm.new(width, height) # World Heightmap
+        self._hm2 = hm.new(width, height) # World map without erosion
+        self._precipitation = hm.new(width, height)
         self._hm_temperature = hm.new(width, height)
         self._biome_map = np.zeros((width, height))
         self._clouds = np.zeros((width, height))
         self.random = random.Random() # Random number generator
-        self.noise = noise.NoiseGenerator(2)
 
     def generate(self):
         # TODO: Add progress indication/messages.
@@ -189,7 +191,7 @@ class WorldGenerator(object):
             altIndexes[i1] - altIndexes[i0])
 
     def precipitation(self, x, y):
-        iprec = clamp(0, 255, 256 * round(self._hm_precip[x, y]))  # tcod.heightmap_get_value(self._hm_precip, x,y)))
+        iprec = clamp(0, 255, 256 * round(self._precipitation[x, y]))  # tcod.heightmap_get_value(self._precipitation, x,y)))
         (i0, i1) = find_index(precIndexes, iprec)
 
         return precipitations[i0] + (precipitations[i1] - precipitations[i0]) * (iprec - precIndexes[i0]) / \
@@ -217,6 +219,7 @@ class WorldGenerator(object):
             yh = self.random.randrange(0, self.height)
             hm.add_hill(self._hm, xh, yh, radius, height)
 
+    @jit
     def set_land_mass(self, land_mass, water_level):
         "Ensure that a proportion <land_mass | [0,1]> of the map is above sea level."
         heightcount = np.zeros(256)
@@ -228,10 +231,10 @@ class WorldGenerator(object):
                 heightcount[ih] += 1
 
         tcnt = 0
-        for i in count(0):
-            if tcnt >= self.width * self.height * (1.0 - land_mass):
-                break
+        i = 0 
+        while tcnt < (self.width * self.height * (1.0 - land_mass)):
             tcnt += heightcount[i]
+            i += 1
 
         new_water_level = i / 255.0
         land_coef = (1.0 - water_level) / (1.0 - new_water_level)
@@ -245,11 +248,10 @@ class WorldGenerator(object):
                     h = h * water_coef
                 self._hm[x, y] = h
 
-    @jit
     def build_base_map(self):
         self.add_hill(600, 16 * self.width / 200, 0.7, 0.3)
         self._hm = hm.normalize(self._hm)
-        hm.add_fbm(self._hm, self.noise, 2.20 * self.width / 400, 2.2 * self.width / 400, 0, 0, 10, 1.0, 2.05)
+        hm.add_fbm(self._hm, noise2d, 2.20 * self.width / 400, 2.2 * self.width / 400, 0, 0, 10, 1.0, 2.05)
         self._hm = hm.normalize(self._hm)
         self._hm2 = self._hm.copy()
         self.set_land_mass(0.6, SAND_HEIGHT)
@@ -267,7 +269,7 @@ class WorldGenerator(object):
             f[0] = 6.0 * x / self.width
             for y in range(self.height):
                 f[1] = 6.0 * y / self.height
-                self._clouds[x, y] = 0.5 * (1.0 + 0.8 * self.noise.get_fbm(f, 4, 'SIMPLEX'))
+                self._clouds[x, y] = 0.5 * (1.0 + 0.8 * noise2d.get_fbm(f, 4, 'SIMPLEX'))
 
     def smooth_map(self):
         # 3x3 kernel for smoothing operations
@@ -283,6 +285,84 @@ class WorldGenerator(object):
         self._hm = hm.normalize(self._hm)
 
     def compute_precipitation(self):
+        water_add, slope_coef, base_precip = 0.03, 2.0, 0.01
+        # // north/south winds
+        for dir_y in [-1, 1]:
+            for x in range(self.width-1):
+                noisex = x*5/self.width
+                water_amount = 1.0 + noise1d.get_fbm(noisex, 3, 'SIMPLEX')
+                start_y = self.height-1 if dir_y == -1 else 0
+                end_y = -1 if dir_y == -1 else self.height
+                for y in range(start_y, end_y, dir_y):
+                    h = self._hm[x, y]
+                    if x < SAND_HEIGHT:
+                        water_amount += water_add
+                    elif water_amount > 0.0:
+                        if (y+dir_y) < self.height:
+                            slope = self._hm[x, y+dir_y]-h
+                        else:
+                            slope = h - self._hm[x, y-dir_y]
+                        if slope >= 0:
+                            precip = water_amount * (base_precip + slope * slope_coef)
+                            self._precipitation[x, y] += precip
+                            water_amount -= precip
+                            water_amount = max(0.0, water_amount)
+
+        # east/west winds
+        for dir_x in [-1, 1]:
+            for y in range(self.height-1):
+                noisey = y*5/self.height
+                water_amount = 1.0 + noise1d.get_fbm(noisey, 3, 'SIMPLEX')
+                start_x = self.width-1 if dir_x == -1 else 0
+                end_x = -1 if dir_x == -1 else self.width
+                for x in range(start_x, end_x, dir_x):
+                    h = self._hm[x, y]
+                    if x < SAND_HEIGHT:
+                        water_amount += water_add
+                    elif water_amount > 0.0:
+                        if (x+dir_x) < self.height:
+                            slope = self._hm[x+dir_x, y]-h
+                        else:
+                            slope = h - self._hm[x-dir_x, y]
+                        if slope >= 0:
+                            precip = water_amount * (base_precip + slope * slope_coef)
+                            self._precipitation[x, y] += precip
+                            water_amount -= precip
+                            water_amount = max(0.0, water_amount)
+
+        min, max = np.amin(self._precipitation), np.amax(self._precipitation)
+        # latitude impact
+        for y in range(self.height//4, 3*self.height//4):
+            lat = y - (self.height/4) * (2/sef.height)
+            coef = math.sin(2*math.pi*lat)
+            #     // latitude (0 : equator, -1/1 : pole)
+            for x in range(self.width):
+                f = [x/self.width, y/self.height]
+                xcoef = coef + 0.5 * noise2d.get_fbm(f, 3, 'SIMPLEX')
+                self._precipitation[x,y] += (max-min)*xcoef*0.1
+        # very fast blur by scaling down and up
+        factor = 8
+    #     static const int factor=8;
+    #     static const int smallWidth = (HM_WIDTH+factor-1)/factor;
+    #     static const int smallHeight = (HM_HEIGHT+factor-1)/factor;
+    #     float *lowResMap = new float[smallWidth * smallHeight];
+    #     memset(lowResMap,0,sizeof(float)*smallWidth*smallHeight);
+    #     for (int x=0; x < HM_WIDTH; x++) {
+    #     	for (int y=0; y < HM_HEIGHT; y++) {
+    #     		float v = precipitation->getValue(x,y);
+    #     		int ix=x/factor;
+    #     		int iy=y/factor;
+    #     		lowResMap[ix + iy*smallWidth ] += v;
+    #     	}
+    #     }
+    #     float coef = 1.0f/factor;
+    #     for (int x=0; x < HM_WIDTH; x++) {
+    #     	for (int y=0; y < HM_HEIGHT; y++) {
+    #     		float v=getInterpolatedFloat(lowResMap,x*coef,y*coef,smallWidth,smallHeight);
+    #     		precipitation->setValue(x,y,v);
+    #     	}
+    #     }
+    #     delete [] lowResMap;
         pass
 
     def erode_map(self):
