@@ -17,8 +17,9 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 from collections import namedtuple
+from colour import Color
 from warnings import warn
-import pyglet, color
+import pyglet
 import numpy as np
 
 Cell = namedtuple('Cell', ['glyph', 'foreground', 'background'])
@@ -28,15 +29,21 @@ class GlyphSet(object):
         self.source = source
         self.im_cnt = rows*cols
         self.image_set = pyglet.image.load(source)
-        self.image_set_seq  = pyglet.image.ImageGrid(self.im_set, rows, cols)
-        self.image_set_tex_seq = pyglet.image.TextureGrid(self.im_set_seq)
+        self.image_set_seq  = pyglet.image.ImageGrid(self.image_set, rows, cols)
+        # self.image_set_tex_seq = pyglet.image.TextureGrid(self.image_set_seq)
+
+    def __getattribute__(self, item):
+        pass
+
+    def __getitem__(self, item):
+        return pyglet.Sprite.sprite(self.image_set_seq[item])
 
     def __repr__(self):
         return "<GlyphSet '{0}' with {1} glyphs>".format(self.source, self.im_cnt)
 
 class Grid():
     
-    def __init__(self, rows, cols, border = 1, window_width=800, window_height=600):
+    def __init__(self, cols, rows, border = 1, window_width=800, window_height=600):
         "Initialise the grid with some sensible parameters."
         # Window dimensions
         if (window_width % cols != 0) or (window_height % rows != 0):
@@ -55,9 +62,21 @@ class Grid():
         # Vertex List
         self.vertex_list = None
         self._grid = np.empty((rows, cols), dtype=object)
-        for i in rows:
-            for j in cols:
-                self._grid[i, j] = Cell(' ', color.COLOR_TABLE['black'], color.COLOR_TABLE['white'])
+        for i in range(rows):
+            for j in range(cols):
+                self._grid[i, j] = Cell(' ', Color('black'), Color('white'))
+
+    def __repr__(self):
+        return '<Grid ({0}x{1} cells)>'.format(self.w, self.h)
+
+    def __getitem__(self, item):
+        return self._grid.__getitem__(item)
+
+    def __setitem__(self, key, value):
+        if isinstance(value, Cell):
+            self._grid.__setitem__(key, value)
+        else:
+            raise TypeError('Value is of type {}, must be a Cell object.'.format(type(value)))
 
     def simple_prepare(self):
         "Ready pyglet_grid for action. Best used when the default parameters are OK."
