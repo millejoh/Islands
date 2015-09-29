@@ -24,23 +24,21 @@ from random import random
 import pyglet
 
 import pyglet_grid
+import colour as c
+from pyglet_grid import Cell, GlyphSet
 
 
+glyphs = GlyphSet('12x12.png', 48, 16)
 
 # How many elements to draw each time through the loop
 how_many = 1000
 
 # Get an instance of pyglet_grid
-grid = pyglet_grid.Grid()
+grid = pyglet_grid.Grid(80, 60)
 # Set up the grid with custom parameters
 # 1. Set up the window
-grid.window_width = 640
-grid.window_height = 480
 grid.init_window()
 # 2. Set up the cell size and border
-grid.cell_height = 10
-grid.cell_width = 10
-grid.cell_border = 1
 grid.init_grid()
 # 3. Initialise the vertex list
 grid.init_vertex_list()
@@ -51,6 +49,9 @@ h = grid.h
 
 # ----- EXAMPLE ONE -----
 
+def random_glpyh():
+    return glyphs[int(random()*48*16)]
+
 def update(dt):
     "Basic example showing simple usage."
     
@@ -60,11 +61,10 @@ def update(dt):
     for x in range(0, how_many):
         x = int(w * random())
         y = int(h * random())
-        r = int(255 * random())
-        g = int(255 * random())
-        b = int(255 * random())
-        c = (r,g,b)
-        grid.set_cell(x,y,c)
+        r = random()
+        g = random()
+        b = random()
+        grid[x,y]= Cell(random_glpyh(), c.Color('white'), c.Color(red=r, blue=b, green=g))
     # Draw the grid
     grid.draw()
 
@@ -90,11 +90,10 @@ def update_faster(dt):
     for x in range(0, how_many):
         x = int(w * random())
         y = int(h * random())
-        r = int(255 * random())
-        g = int(255 * random())
-        b = int(255 * random())
-        c = (r,g,b)
-        grid.set_cell(x,y,c)
+        r = random()
+        g = random()
+        b = random()
+        grid[x, y] = Cell(random_glpyh(), c.Color('white'), c.Color(red=r, blue=b, green=g))
         # Add this cell to the list of dirty cells
         dirty_cells.append([x,y])
     # Draw the grid
@@ -108,6 +107,6 @@ if __name__ == '__main__':
     # UNCOMMENT FOR EXAMPLE ONE
     #pyglet.clock.schedule(update)
     # UNCOMMENT FOR EXAMPLE TWO
-    pyglet.clock.schedule(update_faster)
+    pyglet.clock.schedule(update)
 
     pyglet.app.run()

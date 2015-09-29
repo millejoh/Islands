@@ -32,11 +32,8 @@ class GlyphSet(object):
         self.image_set_seq  = pyglet.image.ImageGrid(self.image_set, rows, cols)
         # self.image_set_tex_seq = pyglet.image.TextureGrid(self.image_set_seq)
 
-    def __getattribute__(self, item):
-        pass
-
     def __getitem__(self, item):
-        return pyglet.Sprite.sprite(self.image_set_seq[item])
+        return pyglet.sprite.Sprite(self.image_set_seq[item])
 
     def __repr__(self):
         return "<GlyphSet '{0}' with {1} glyphs>".format(self.source, self.im_cnt)
@@ -61,20 +58,23 @@ class Grid():
         self.h = rows
         # Vertex List
         self.vertex_list = None
-        self._grid = np.empty((rows, cols), dtype=object)
-        for i in range(rows):
-            for j in range(cols):
-                self._grid[i, j] = Cell(' ', Color('black'), Color('white'))
+        self._glyphs = {}
+        self.glyph_batch = pyglet.graphics.Batch()
 
     def __repr__(self):
         return '<Grid ({0}x{1} cells)>'.format(self.w, self.h)
 
     def __getitem__(self, item):
-        return self._grid.__getitem__(item)
+        x, y = item
+        c1 = 12 * (x + y * self.w)
+        return self.vertex_list.colors[c1:c1+12]
 
     def __setitem__(self, key, value):
         if isinstance(value, Cell):
-            self._grid.__setitem__(key, value)
+            x, y = key
+            self.set_cell_glyph(x, y, value.glyph)
+            self.set_cell_bg(x, y, value.background)
+            self.set_cell_fg(x, y, value.foreground)
         else:
             raise TypeError('Value is of type {}, must be a Cell object.'.format(type(value)))
 
@@ -98,7 +98,7 @@ class Grid():
     
     def init_vertex_list(self):
         "Initialise the vertex list."
-        self.vertex_list = pyglet.graphics.vertex_list(4 * self.w * self.h, 'v2i/static', 'c3B/stream')
+        self.vertex_list = pyglet.graphics.vertex_list(4 * self.w * self.h, 'v2i/static', 'c3f/stream')
         verts = []
         cell_width = self.cell_width
         cell_height = self.cell_height
@@ -123,17 +123,36 @@ class Grid():
         self.vertex_list.colors = [0] * 12 * self.w * self.h
         
     
-    def set_cell(self, x, y, c):
-        """Set the color of a cell.
+    def set_cell_bg(self, x, y, color):
+        """Set the background color of a cell.
         The variables x and y should be in the range (0, self.w) and (0, self.h) respectively."
-        The variable c should be a 3-tuple with values in the range (0,255).
+        The variable c should be a colour.Color object.
         """
         # Unpack colour values
-        r,g,b = c[0], c[1], c[2]
+        r,g,b = color.get_rgb()
         # There are 4 vertices per coordinate, each with 3 values for the colour
         c1 = 12 * (x + y*self.w)
         self.vertex_list.colors[c1:c1+12] = [r,g,b] * 4
-        
+
+    def set_cell_fg(self, x, y, color):
+        """Set the foreground color of a cell, i.e. the color of the cell's glyph (if it has one).
+        The variables x and y should be in the range (0, self.w) and (0, self.h) respectively."
+        The variable c should be a colour.Color object.
+        """
+        r, g, b = color.get_rgb()
+        try:
+            self._glyphs[(x,y)].color = (int(r*255), int(g*255), int(b*255))
+        except KeyError:
+            pass
+
+    def set_cell_glyph(self, x, y, glyph):
+        coord = (x, y)
+        if isinstance(glyph, pyglet.sprite.Sprite):
+            if coord in self._glyphs:
+                self._glyphs[coord].batch = None
+                self._glyphs[coord] = glyph
+                self._glyphs[coord].batch = self.glyph_batch
+
     def unset_cell(self, x, y):
         "Unset a cell back to the background colour."
         # There are 4 vertices per coordinate, each with 3 values for the colour
@@ -148,4 +167,5 @@ class Grid():
 
     def draw(self):
         "Draw the vertex list using the currently assigned colours."
+        self.glyph_batch.draw()
         self.vertex_list.draw(pyglet.gl.GL_QUADS)
