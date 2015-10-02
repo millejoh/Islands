@@ -33,7 +33,13 @@ class GlyphSet(object):
         # self.image_set_tex_seq = pyglet.image.TextureGrid(self.image_set_seq)
 
     def __getitem__(self, item):
-        return pyglet.sprite.Sprite(self.image_set_seq[item])
+        if isinstance(item, int) or isinstance(item, tuple):
+            return pyglet.sprite.Sprite(self.image_set_seq[item])
+        elif isinstance(item, str) and len(item) == 1:
+            idx = self.im_cnt - (ord(item)+16)
+            return pyglet.sprite.Sprite(self.image_set_seq[idx])
+        else:
+            raise AttributeError
 
     def __repr__(self):
         return "<GlyphSet '{0}' with {1} glyphs>".format(self.source, self.im_cnt)
