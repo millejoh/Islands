@@ -137,7 +137,7 @@ class Grid():
         # Unpack colour values
         r,g,b = color.get_rgb()
         # There are 4 vertices per coordinate, each with 3 values for the colour
-        c1 = 12 * (x + y*self.w)
+        c1 = 12 * (x*self.h + y)
         self.vertex_list.colors[c1:c1+12] = [r,g,b] * 4
 
     def set_cell_fg(self, x, y, color):
@@ -154,10 +154,11 @@ class Grid():
     def set_cell_glyph(self, x, y, glyph):
         coord = (x, y)
         if isinstance(glyph, pyglet.sprite.Sprite):
+            glyph.x, glyph.y = x*self.cell_width, y*self.cell_height
             if coord in self._glyphs:
                 self._glyphs[coord].batch = None
-                self._glyphs[coord] = glyph
-                self._glyphs[coord].batch = self.glyph_batch
+            self._glyphs[coord] = glyph
+            self._glyphs[coord].batch = self.glyph_batch
 
     def unset_cell(self, x, y):
         "Unset a cell back to the background colour."
@@ -173,5 +174,7 @@ class Grid():
 
     def draw(self):
         "Draw the vertex list using the currently assigned colours."
-        self.glyph_batch.draw()
         self.vertex_list.draw(pyglet.gl.GL_QUADS)
+        #self.glyph_batch.draw()
+
+

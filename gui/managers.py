@@ -7,12 +7,20 @@ from tcod.gameloop import BasicEventLoop
 from tcod.events import *
 from gui.utils import translate_negative_coords, transparency_to_fade
 
+try:
+    from ipykernel.zmqshell.eventloops import register_integration
+    support_ipy = True
+except ImportError:
+    support_ipy = False
 
 class WindowManager(object):
     def __init__(self, screen_width, screen_height, auto_redraw=True, opaque=1, invisible=0, dimmed=75, bold_factor=1.4,
-                 focus_fade_mode='together'):
+                 focus_fade_mode='together', font=tcod.default_font,
+                 font_flags=tcod.FONT_LAYOUT_TCOD|tcod.FONT_TYPE_GREYSCALE,
+                 font_width=0, font_height=0):
         #assert root_console is not None
-        self.rootc = RootConsole(screen_width, screen_height)
+        self.rootc = RootConsole(screen_width, screen_height, font_file=font, font_flags=font_flags,
+                                 font_width=font_width, font_height=font_height)
         self.window_stack = []
         self.hidden_window_stack = []
         self.topwin = None
@@ -139,17 +147,33 @@ class WindowManager(object):
 
 
 class GuiEventLoop(BasicEventLoop):
-    def __init__(self, window_manager, drag_delay=0.05, double_click_speed=1000):
+    def __init__(self, window_manager, drag_delay=0.05, double_click_speed=1000, ipykernel=None):
         self.mouse_x = 0
         self.mouse_y = 0
         self.last_mouse_click = None
         self.drag_delay = drag_delay
         self.double_click_speed = double_click_speed
         self.window_manager = window_manager
+        self.ipykernel = ipykernel
+        self.end_game = False
         super().__init__()
 
+
+    def ipy_kernel_callback(dt, kernel):
+        kernel.do_one_iteration()
+
     def run(self):
-        self.window_manager.rootc.run(self)
+        root = self.window_manager.rootc
+        root.init_root()
+        while (not self.end_game) and (not tcod.console_is_window_closed()):
+            #events = sys_get_events()
+            #self.handle_keys(key)
+            if self.ipykernel:
+                self.ipy_kernel_callback(self.ipykernel)
+
+            root.clear()
+            self.step(root)
+            root.flush()
 
     def window_with_mouse_focus(self):
         """Return the topmost window under the mouse pointer."""
@@ -263,3 +287,12 @@ class GuiEventLoop(BasicEventLoop):
             wm.last_topwin = wm.topwin
 
         wm.process_windows()
+
+if support_ipy:
+    @register_integration('tcod_gui')
+    def init_gui_manager(kernel):
+        global window_manager, gui_loop
+        window_manager = WindowManager(80, 60)
+        gui_loop = GuiEventLoop(wm, kernel)
+        gui_loop.run()
+    

@@ -26,11 +26,11 @@ import os, os.path
 os.environ['PATH'] = os.path.dirname(os.path.abspath(__file__)) + ';' + os.environ['PATH']
 #print('PATH = ', os.environ['PATH'])
 
-from tcod.libtcodpy import *
+from tcod.libtcodpy_x64 import *
 
 
 root_console = 0 # This means NULL for you C folk.
-default_font =  os.path.join(os.path.dirname(os.path.abspath(__file__)), os.path.normpath('data/fonts/consolas10x10_gs_tc.png'))
+default_font = os.path.join(os.path.dirname(os.path.abspath(__file__)), os.path.normpath('data/fonts/consolas10x10_gs_tc.png'))
 
 key_dispatch_table = {}
 

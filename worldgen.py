@@ -1,6 +1,7 @@
 # A direct translation of Jice's worldgen tool.
 #import tcod
 #from tcod.tools import Heightmap
+import math
 import numpy as np
 import random
 import noise
@@ -139,6 +140,7 @@ def find_index(indices, val):
         if val < bound:
             return i - 1, i
     return len(indices), len(indices) - 1
+
 
 def rand_float_range(min, max, random=random):
     return (random.random() + min/max) * max
@@ -333,7 +335,7 @@ class WorldGenerator(object):
         min, max = np.amin(self._precipitation), np.amax(self._precipitation)
         # latitude impact
         for y in range(self.height//4, 3*self.height//4):
-            lat = y - (self.height/4) * (2/sef.height)
+            lat = y - (self.height/4) * (2/self.height)
             coef = math.sin(2*math.pi*lat)
             #     // latitude (0 : equator, -1/1 : pole)
             for x in range(self.width):
@@ -342,20 +344,19 @@ class WorldGenerator(object):
                 self._precipitation[x,y] += (max-min)*xcoef*0.1
         # very fast blur by scaling down and up
         factor = 8
-    #     static const int factor=8;
-    #     static const int smallWidth = (HM_WIDTH+factor-1)/factor;
-    #     static const int smallHeight = (HM_HEIGHT+factor-1)/factor;
-    #     float *lowResMap = new float[smallWidth * smallHeight];
-    #     memset(lowResMap,0,sizeof(float)*smallWidth*smallHeight);
-    #     for (int x=0; x < HM_WIDTH; x++) {
-    #     	for (int y=0; y < HM_HEIGHT; y++) {
-    #     		float v = precipitation->getValue(x,y);
-    #     		int ix=x/factor;
-    #     		int iy=y/factor;
-    #     		lowResMap[ix + iy*smallWidth ] += v;
-    #     	}
-    #     }
-    #     float coef = 1.0f/factor;
+        small_width = (self.width+factor-1)/factor;
+        small_height = (self.heightfactor-1)/factor;
+        low_res_map = np.zeros((small_width, small_height))
+        for x in range(self.width):
+            for y in range(self.height):
+                v = self._precipitation[x, y]
+                ix = x / factor
+                iy = y / factor
+                low_res_map[ix, iy] += v
+        # coef = 1.0 / factor
+        # for x in range(self.width):
+        #     for y in range(self.height):
+        #         v = tcod.get_
     #     for (int x=0; x < HM_WIDTH; x++) {
     #     	for (int y=0; y < HM_HEIGHT; y++) {
     #     		float v=getInterpolatedFloat(lowResMap,x*coef,y*coef,smallWidth,smallHeight);
@@ -379,14 +380,16 @@ class WorldGenerator(object):
 
     def compute_colors(self):
         pass
+
+
 # Tests
 # -----
 
 def test_find_index():
-    assert findIndex(tempIndexes, 32) == (0, 1)
-    assert findIndex(tempIndexes, 120) == (2, 3)
-    assert findIndex(tempIndexes, 0) == (0, 1)
-    assert findIndex(tempIndexes, 255) == (4, 5)
+    assert find_index(tempIndexes, 32) == (0, 1)
+    assert find_index(tempIndexes, 120) == (2, 3)
+    assert find_index(tempIndexes, 0) == (0, 1)
+    assert find_index(tempIndexes, 255) == (4, 5)
 
 
 def test_clamp():

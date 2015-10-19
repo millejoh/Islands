@@ -1,6 +1,6 @@
 #
-# libtcod 1.5.2 python wrapper
-# Copyright (c) 2008,2009,2010 Jice & Mingos
+# libtcod 1.6.0 python wrapper
+# Copyright (c) 2008,2009,2010,2012,2013 Jice & Mingos
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -25,6 +25,7 @@
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 
+import os
 import sys
 import ctypes
 import struct
@@ -43,22 +44,42 @@ LINUX=False
 MAC=False
 MINGW=False
 MSVC=False
+
+def _get_cdll(libname):
+    ''' 
+        get the library libname using a manual search path that will first
+        check the package directory and then the development path
+        
+        returns the ctypes lib object
+    '''
+    path = os.path.realpath(__path__[0])
+    libfile = os.path.join(path, libname)
+    try:
+        # get library from the package
+        return ctypes.WinDLL(os.path.realpath(libfile))
+    except OSError:
+        # or try to get get it from the development path
+        return ctypes.WinDLL[os.path.realpath(os.path.join(path,
+                                                         '../..', libname))]
+
 if sys.platform.find('linux') != -1:
-    _lib = ctypes.cdll['./libtcod.so']
+    _lib = _get_cdll('libtcod.so')
     LINUX=True
 elif sys.platform.find('darwin') != -1:
-    _lib = ctypes.cdll['./libtcod.dylib']
+    _lib = _get_cdll('libtcod.dylib')
     MAC = True
 elif sys.platform.find('haiku') != -1:
-    _lib = ctypes.cdll['./libtcod.so']
+    _lib = _get_cdll('libtcod.so')
     HAIKU = True
 else:
+    _sdl_lib = ctypes.windll.SDL2 # _get_cdll('SDL2.dll')
     try:
-        _lib = ctypes.cdll['libtcod-mingw.dll']
-        MINGW=True
-    except WindowsError:
-        _lib = ctypes.cdll['libtcod-VS.dll']
+        _lib = ctypes.windll.libtcod
+        # _lib = _get_cdll('libtcod.dll')
         MSVC=True
+    except WindowsError:
+        _lib = _get_cdll('libtcod-mingw.dll')
+        MINGW=True
     # On Windows, ctypes doesn't work well with function returning structs,
     # so we have to user the _wrapper functions instead
     _lib.TCOD_color_multiply = _lib.TCOD_color_multiply_wrapper
@@ -75,17 +96,17 @@ else:
     _lib.TCOD_image_get_mipmap_pixel = _lib.TCOD_image_get_mipmap_pixel_wrapper
     _lib.TCOD_parser_get_color_property = _lib.TCOD_parser_get_color_property_wrapper
 
-HEXVERSION = 0x010502
-STRVERSION = "1.5.2"
-TECHVERSION = 0x01050200
+HEXVERSION = 0x010600
+STRVERSION = "1.6.0"
+TECHVERSION = 0x01060000
 
 ############################
 # color module
 ############################
 class Color(Structure):
-    _fields_ = [('r', c_uint8),
-                ('g', c_uint8),
-                ('b', c_uint8),
+    _fields_ = [('r', ctypes.c_uint),
+                ('g', ctypes.c_uint),
+                ('b', ctypes.c_uint),
                 ]
 
     def __eq__(self, c):
@@ -125,7 +146,7 @@ class Color(Structure):
 
 # Should be valid on any platform, check it!  Has to be done after Color is defined.
 if MAC:
-    from cprotos import setup_protos
+    from .cprotos import setup_protos
     setup_protos(_lib)
 
 _lib.TCOD_color_equals.restype = c_bool
@@ -387,12 +408,15 @@ def color_gen_map(colors, indexes):
 class Key(Structure):
     _fields_=[('vk', c_int),
               ('c', c_uint8),
+              ('text',c_char * 32),
               ('pressed', c_bool),
               ('lalt', c_bool),
               ('lctrl', c_bool),
+              ('lmeta', c_bool),
               ('ralt', c_bool),
               ('rctrl', c_bool),
-              ('shift', c_bool),
+              ('rmeta', c_bool),
+              ('shift', c_bool)
               ]
 
 class ConsoleBuffer:
@@ -476,14 +500,14 @@ class ConsoleBuffer:
 _lib.TCOD_console_credits_render.restype = c_bool
 _lib.TCOD_console_is_fullscreen.restype = c_bool
 _lib.TCOD_console_is_window_closed.restype = c_bool
-# _lib.TCOD_console_has_mouse_focus.restype = c_bool
-# _lib.TCOD_console_is_active.restype = c_bool
-# _lib.TCOD_console_get_default_background.restype = Color
-# _lib.TCOD_console_get_default_foreground.restype = Color
-# _lib.TCOD_console_get_char_background.restype = Color
-# _lib.TCOD_console_get_char_foreground.restype = Color
-# _lib.TCOD_console_get_fading_color.restype = Color
-# _lib.TCOD_console_is_key_pressed.restype = c_bool
+_lib.TCOD_console_has_mouse_focus.restype = c_bool
+_lib.TCOD_console_is_active.restype = c_bool
+_lib.TCOD_console_get_default_background.restype = Color
+_lib.TCOD_console_get_default_foreground.restype = Color
+_lib.TCOD_console_get_char_background.restype = Color
+_lib.TCOD_console_get_char_foreground.restype = Color
+_lib.TCOD_console_get_fading_color.restype = Color
+_lib.TCOD_console_is_key_pressed.restype = c_bool
 
 # background rendering modes
 BKGND_NONE = 0
@@ -728,6 +752,11 @@ def console_map_string_to_font(s, fontCharX, fontCharY):
     else:
         _lib.TCOD_console_map_string_to_font_utf(s, fontCharX, fontCharY)
 
+def console_set_dirty(tlx, tly, brx, bry):
+    """Mark region of root console for redraw.
+    """
+    _lib.TCOD_console_set_dirty(tlx, tly, brx, bry)
+
 def console_is_fullscreen():
     return _lib.TCOD_console_is_fullscreen()
 
@@ -848,7 +877,6 @@ def console_print_frame(con, x, y, w, h, clear=True, flag=BKGND_DEFAULT, fmt=0):
 
 def console_print_double_frame(con, x, y, w, h, clear=True, flag=BKGND_DEFAULT, fmt=0):
     _lib.TCOD_console_print_double_frame(c_void_p(con), x, y, w, h, c_int(clear), flag, c_char_p(fmt))
-
 
 def console_set_color_control(con,fore,back) :
     _lib.TCOD_console_set_color_control(con,fore,back)
@@ -980,9 +1008,6 @@ def console_load_apf(con, filename) :
     _lib.TCOD_console_load_apf(con,filename)
 def console_save_apf(con, filename) :
     _lib.TCOD_console_save_apf(con,filename)
-
-def console_set_dirty(tlx, tly, brx, bry):
-    _lib.TCOD_console_set_dirty(tlx, tly, brx, bry)
 
 ############################
 # sys module
@@ -1216,11 +1241,11 @@ def mouse_get_status():
 ############################
 _lib.TCOD_struct_get_name.restype = c_char_p
 _lib.TCOD_struct_is_mandatory.restype = c_bool
-# _lib.TCOD_parser_has_property.restype = c_bool
-# _lib.TCOD_parser_get_bool_property.restype = c_bool
-# _lib.TCOD_parser_get_float_property.restype = c_float
-# _lib.TCOD_parser_get_string_property.restype = c_char_p
-# _lib.TCOD_parser_get_color_property.restype = Color
+_lib.TCOD_parser_has_property.restype = c_bool
+_lib.TCOD_parser_get_bool_property.restype = c_bool
+_lib.TCOD_parser_get_float_property.restype = c_float
+_lib.TCOD_parser_get_string_property.restype = c_char_p
+_lib.TCOD_parser_get_color_property.restype = Color
 
 class Dice(Structure):
     _fields_=[('nb_dices', c_int),
@@ -1825,18 +1850,14 @@ class HeightMap(object):
 
     def getw(self):
         return self.p.contents.w
-
     def setw(self, value):
         self.p.contents.w = value
-
     w = property(getw, setw)
 
     def geth(self):
         return self.p.contents.h
-
     def seth(self, value):
         self.p.contents.h = value
-
     h = property(geth, seth)
 
 def heightmap_new(w, h):
@@ -1973,7 +1994,7 @@ def namegen_generate_custom(name, rule) :
 
 def namegen_get_sets():
     nb=_lib.TCOD_namegen_get_nb_sets_wrapper()
-    SARRAY = c_char_p * nb
+    SARRAY = c_char_p * nb;
     setsa = SARRAY()
     _lib.TCOD_namegen_get_sets_wrapper(setsa)
     return list(setsa)

@@ -49,6 +49,7 @@ h = grid.h
 
 # ----- EXAMPLE ONE -----
 
+
 def random_glpyh():
     return glyphs[int(random()*48*16)]
 

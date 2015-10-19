@@ -7,7 +7,6 @@ import gui
 import color as color
 from tcod.string import make_colored_string
 
-
 def sys_get_events():
     mouse = tcod.Mouse()
     key = tcod.Key()
@@ -81,7 +80,9 @@ class Console(object):
         if foreground is None:
             foreground = self.get_char_foreground(x, y)
 
-        tcod.console_put_char_ex(self._c, x, y, symbol, foreground, background)
+        tcod.console_set_char_background(self._c, x, y, background)
+        tcod.console_set_char_foreground(self._c, x, y, foreground)
+        tcod.console_put_char(self._c, x, y, symbol)
 
     @property
     def keyboard_repeat(self):
@@ -289,8 +290,10 @@ class RootConsole(Thread, Console):
 
     def __init__(self, width=80, height=50, title=b'Stage',
                  background=tcod.darker_sepia,
-                 font_file=tcod.default_font, datax='', fullscreen=False,
-                 renderer=tcod.RENDERER_GLSL, max_fps=30):
+                 font_file=tcod.default_font, font_flags=tcod.FONT_LAYOUT_TCOD | tcod.FONT_TYPE_GREYSCALE,
+                 font_width=0, font_height=0,
+                 datax='', fullscreen=False,
+                 renderer=tcod.RENDERER_SDL, max_fps=30):
         """
         Create a RootConsole object.
 
@@ -306,10 +309,14 @@ class RootConsole(Thread, Console):
         :return:
         """
         super().__init__()
+        if not os.path.exists(font_file):
+            path = os.path.join(os.path.dirname(os.path.abspath(__file__)), os.path.normpath('data/fonts/'))
+            font_file = os.path.join(path, font_file)
         if os.path.exists(font_file):
             tcod.console_set_custom_font(bytes(font_file, 'utf-8'),
-                                         tcod.FONT_LAYOUT_TCOD |
-                                         tcod.FONT_TYPE_GREYSCALE)
+                                         flags=font_flags,
+                                         nb_char_horiz=font_width,
+                                         nb_char_vertic=font_height)
         else:
             raise OSError("Font file {0} not found.".format(font_file))
 
@@ -326,15 +333,19 @@ class RootConsole(Thread, Console):
     def flush(self):
         tcod.console_flush()
 
-    def run(self, gameloop_manager):
+    def init_root(self, show_credits=False):
         RootConsole.active_root = self
         RootConsole.scratch = Console(self.width, self.height)
         RootConsole.temp_console = Console(self.width, self.height)
 
         tcod.console_init_root(self.width, self.height, self.title,
                                self.fullscreen, self.renderer)
+        if show_credits:
+            tcod.console_credits()
         tcod.sys_set_fps(self.max_fps)
+        
 
+    def run(self, gameloop_manager):
         while (not self.end_game) and (not tcod.console_is_window_closed()):
             #events = sys_get_events()
             #self.handle_keys(key)
@@ -343,3 +354,4 @@ class RootConsole(Thread, Console):
             tcod.console_flush()
 
 R = RootConsole
+

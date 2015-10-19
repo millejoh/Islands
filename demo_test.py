@@ -91,8 +91,10 @@ class WorldGame(GuiEventLoop):
         end = tcod.sys_elapsed_milli()
 
 
-# if __name__ == '__main__':
-#     wm = WindowManager(80, 60)
-#     game = WorldGame(wm)
-#     game.initialize()
-#     game.run()
+if __name__ == '__main__':
+    wm = WindowManager(80, 60)
+    # font='12x12.png', font_flags=tcod.FONT_LAYOUT_ASCII_INROW|tcod.FONT_TYPE_GREYSCALE,
+    #                    font_width=16, font_height=48)
+    game = DemoGuiGame(wm)
+    game.initialize()
+    game.run()
