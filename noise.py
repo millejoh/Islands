@@ -1,6 +1,7 @@
 from collections import namedtuple
 from math import sqrt, floor
 import numpy as np
+from numba import jit
 
 __author__ = 'millejoh'
 
@@ -20,7 +21,7 @@ WAVELET_SCALE = 2.0
 def cubic(x):
     return x * x * (3 - 2 * x)
 
-
+@jit
 def lerp(c0, c1, dx):
     """Calculated interpolated value between `c0` and `c1` given dx that is
      between 0 and 1.
@@ -136,6 +137,7 @@ class NoiseGenerator(object):
             f[i] *= magnitude
         return f
 
+    @jit
     def lattice(self, ix, fx, iy, fy, iz, fz, iw, fw):
         n = np.array([ix, iy, iz, iw])
         f = np.array([fx, fy, fz, fw])
@@ -527,6 +529,7 @@ class NoiseGenerator(object):
 
         return 27.0 * (n0 + n1 + n2 + n3 + n4)
 
+    @jit
     def noise_fbm_int(self, f, octaves, func):
         tf = np.array(f)
         value = 0

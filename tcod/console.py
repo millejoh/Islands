@@ -32,8 +32,11 @@ class Console(object):
         self.width = width
         self.height = height
         self._c = tcod.console_new(width, height)
-        self.default_foreground = tcod.white
-        self.default_background = tcod.black
+        self.background = tcod.black
+        self.foreground = tcod.white
+        # tcod.console_set_default_background(self._c, tcod.black)
+        # tcod.console_set_default_foreground(self._c, tcod.white)
+        tcod.console_clear(self._c)
 
     def __del__(self):
         tcod.console_delete(self._c)

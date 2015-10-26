@@ -6,6 +6,7 @@ import numpy as np
 import random
 import noise
 import Heightmap as hm
+from tcod import Color
 from itertools import count
 from numba import jit
 
@@ -14,6 +15,20 @@ noise2d = noise.NoiseGenerator(2)
 
 # Height and Biome Constants
 # --------------------------
+
+biome_colors = {'SNOW': Color(248, 248, 248),
+                'TUNDRA': Color(221, 221, 187),
+                'BARE': Color(187, 187, 187),
+                'SCORCHED': Color(153, 153, 153),
+                'TAIGA': Color(204, 212, 187),
+                'SHRUBLAND': Color(194, 204, 187),
+                'GRASSLAND': Color(192, 212, 170),
+                'TEMPERATE_DESERT': Color(228, 232, 202),
+                'TEMPERATE_RAIN_FOREST': Color(164, 196, 168),
+                'TEMPERATE_DECIDUOUS_FOREST': Color(180, 201, 169),
+                'TROPICAL_RAIN_FOREST': Color(156, 187, 169),
+                'TROPICAL_SEASONAL_FOREST': Color(169, 204, 164),
+                'SUBTROPICAL_DESERT': Color(233, 221, 199)}
 
 biomeDiagram = [
     # artic/alpine climate (below -5degC)
@@ -126,11 +141,17 @@ dircoef = [1.0, 1.0 / 1.414, 1.0, 1.0 / 1.414, 1.0, 1.0, 1.0 / 1.414, 1.0, 1.0 /
 oppdir = [0, 8, 7, 6, 5, 4, 3, 2, 1]
 
 
-def clamp(min, max, val):
-    if min > val:
-        return min
-    elif val > max:
-        return max
+def in_rectangle(x,y,w,h):
+    return (x < w) and (y < h)
+
+def sqrdist(x1,y1,x2,y2):
+    return (((x1)-(x2))*((x1)-(x2))+((y1)-(y2))*((y1)-(y2)))
+
+def clamp(cmin, cmax, val):
+    if cmin > val:
+        return cmin
+    elif val > cmax:
+        return cmax
     else:
         return val
 
@@ -142,8 +163,23 @@ def find_index(indices, val):
     return len(indices), len(indices) - 1
 
 
-def rand_float_range(min, max, random=random):
-    return (random.random() + min/max) * max
+def rand_float_range(fmin, fmax, random=random):
+    return (random.random() + fmin/fmax) * fmax
+
+def get_interpolated_float(arr, x, y, width, height):
+    wx = clamp(0.0, width-1, x)
+    wy = clamp(0.0, height-1, y)
+    iwx = round(wx)
+    iwy = round(wy)
+    dx = wx - iwx
+    dy = wy - iwy
+    iNW = arr[iwx, iwy]
+    iNE = arr[iwx+1, iwy] if iwx < width-1 else iNW
+    iSW = arr[iwx, iwy+1] if iwy < height-1 else iNW
+    iSE = arr[iwx+1, iwy+1] if (iwy < height-1) and (iwx < width-1) else iNW
+    iN = (1.0-dx)*iNW + dx*iNE
+    iS = (1.0-dx)*iSW + dx*iSE
+    return (1.0-dy)*iN + dy * iS
 
 
 class WorldGenerator(object):
@@ -332,7 +368,7 @@ class WorldGenerator(object):
                             water_amount -= precip
                             water_amount = max(0.0, water_amount)
 
-        min, max = np.amin(self._precipitation), np.amax(self._precipitation)
+        fmin, fmax = np.amin(self._precipitation), np.amax(self._precipitation)
         # latitude impact
         for y in range(self.height//4, 3*self.height//4):
             lat = y - (self.height/4) * (2/self.height)
@@ -341,11 +377,11 @@ class WorldGenerator(object):
             for x in range(self.width):
                 f = [x/self.width, y/self.height]
                 xcoef = coef + 0.5 * noise2d.get_fbm(f, 3, 'SIMPLEX')
-                self._precipitation[x,y] += (max-min)*xcoef*0.1
+                self._precipitation[x,y] += (fmax-fmin)*xcoef*0.1
         # very fast blur by scaling down and up
         factor = 8
-        small_width = (self.width+factor-1)/factor;
-        small_height = (self.heightfactor-1)/factor;
+        small_width = int((self.width+factor-1)/factor)
+        small_height = int((self.height+factor-1)/factor)
         low_res_map = np.zeros((small_width, small_height))
         for x in range(self.width):
             for y in range(self.height):
@@ -353,18 +389,11 @@ class WorldGenerator(object):
                 ix = x / factor
                 iy = y / factor
                 low_res_map[ix, iy] += v
-        # coef = 1.0 / factor
-        # for x in range(self.width):
-        #     for y in range(self.height):
-        #         v = tcod.get_
-    #     for (int x=0; x < HM_WIDTH; x++) {
-    #     	for (int y=0; y < HM_HEIGHT; y++) {
-    #     		float v=getInterpolatedFloat(lowResMap,x*coef,y*coef,smallWidth,smallHeight);
-    #     		precipitation->setValue(x,y,v);
-    #     	}
-    #     }
-    #     delete [] lowResMap;
-        pass
+        coef = 1.0 / factor
+        for x in range(self.width):
+            for y in range(self.height):
+                 v = get_interpolated_float(low_res_map, x*coef, y*coef, small_width, small_height)
+                 self._precipitation[x, y] = v
 
     def erode_map(self):
         pass
@@ -373,10 +402,49 @@ class WorldGenerator(object):
         pass
 
     def smooth_precipitations(self):
-        pass
+        temphm = self._precipitation.copy()
+        for i in range(4, 0, -1):
+            for x in range(self.width):
+                minx = max((0, x - 2))
+                maxx = min((self.width-1, x + 2))
+                miny = 0
+                maxy = 2
+                psum = np.sum(self._precipitation[minx:maxx, miny:maxy])
+                pcount = (maxy-miny)*(maxx-minx)
+                temphm[x, 0] = psum/pcount
+                for y in range(1, self.height):
+                    if (y-2) >= 0:
+                        sum -= np.sum(self._precipitation[minx:maxx, y-2])
+                        count -= (maxx-minx)
+                    if (y+2) < self.height:
+                        sum += np.sum(self._precipitation[minx:maxx, y+2])
+                        count += (maxx-minx)
+                    temphm[x, y] = sum/count
+        self._precipitation = self.temphm.copy()
+        hm.normalize(self._precipitation)
 
     def compute_temperatures_and_biomes(self):
         pass
+
+    def biome_color(self, biome, x, y):
+        r = biome_colors[biome].r
+        g = biome_colors[biome].g
+        b = biome_colors[biome].b
+        count = 0
+        for i in range(4):
+            ix = x + random.randint(-10, 10)
+            iy = y + random.randint(-10, 10)
+            if in_rectangle(ix, iy, self.width, self.height):
+                c = biome_colors(self.biome_map[ix, iy])
+                r += c.r + random.randint(-10,10)
+                g += c.g + random.randint(-10,10)
+                b += c.b + random.randint(-10,10)
+                count += 1
+        r /= count
+        g /= count
+        b /= count
+        r, g, b = clamp(0,255,r), clamp(0, 255, g), clamp(0, 255, b)
+        return Color(r, g, b)
 
     def compute_colors(self):
         pass

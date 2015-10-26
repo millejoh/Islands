@@ -81,7 +81,7 @@ else:
         _lib = _get_cdll('libtcod-mingw.dll')
         MINGW=True
     # On Windows, ctypes doesn't work well with function returning structs,
-    # so we have to user the _wrapper functions instead
+    # so we have to use the _wrapper functions instead
     _lib.TCOD_color_multiply = _lib.TCOD_color_multiply_wrapper
     _lib.TCOD_color_add = _lib.TCOD_color_add_wrapper
     _lib.TCOD_color_multiply_scalar = _lib.TCOD_color_multiply_scalar_wrapper
@@ -89,8 +89,12 @@ else:
     _lib.TCOD_color_lerp = _lib.TCOD_color_lerp_wrapper
     _lib.TCOD_console_get_default_background = _lib.TCOD_console_get_default_background_wrapper
     _lib.TCOD_console_get_default_foreground = _lib.TCOD_console_get_default_foreground_wrapper
+    _lib.TCOD_console_set_default_background = _lib.TCOD_console_set_default_background_wrapper
+    _lib.TCOD_console_set_default_foreground = _lib.TCOD_console_set_default_foreground_wrapper
     _lib.TCOD_console_get_char_background = _lib.TCOD_console_get_char_background_wrapper
     _lib.TCOD_console_get_char_foreground = _lib.TCOD_console_get_char_foreground_wrapper
+    _lib.TCOD_console_set_char_background = _lib.TCOD_console_set_char_background_wrapper
+    _lib.TCOD_console_set_char_foreground = _lib.TCOD_console_set_char_foreground_wrapper
     _lib.TCOD_console_get_fading_color = _lib.TCOD_console_get_fading_color_wrapper
     _lib.TCOD_image_get_pixel = _lib.TCOD_image_get_pixel_wrapper
     _lib.TCOD_image_get_mipmap_pixel = _lib.TCOD_image_get_mipmap_pixel_wrapper
@@ -104,10 +108,9 @@ TECHVERSION = 0x01060000
 # color module
 ############################
 class Color(Structure):
-    _fields_ = [('r', ctypes.c_uint),
-                ('g', ctypes.c_uint),
-                ('b', ctypes.c_uint),
-                ]
+    _fields_ = [('r', ctypes.c_uint, 8),
+                ('g', ctypes.c_uint, 8),
+                ('b', ctypes.c_uint, 8)]
 
     def __eq__(self, c):
         return _lib.TCOD_color_equals(self, c)
