@@ -173,9 +173,9 @@ def get_interpolated_float(arr, x, y, width, height):
     iwy = round(wy)
     dx = wx - iwx
     dy = wy - iwy
-    iNW = arr[iwx, iwy]
-    iNE = arr[iwx+1, iwy] if iwx < width-1 else iNW
-    iSW = arr[iwx, iwy+1] if iwy < height-1 else iNW
+    iNW = arr[iwx  , iwy]
+    iNE = arr[iwx+1, iwy]   if (iwx < width-1) else iNW
+    iSW = arr[iwx  , iwy+1] if (iwy < height-1) else iNW
     iSE = arr[iwx+1, iwy+1] if (iwy < height-1) and (iwx < width-1) else iNW
     iN = (1.0-dx)*iNW + dx*iNE
     iS = (1.0-dx)*iSW + dx*iSE
@@ -194,10 +194,10 @@ class WorldGenerator(object):
         self._clouds = np.zeros((width, height))
         self.random = random.Random() # Random number generator
 
-    def generate(self):
+    def generate(self, hill_cnt=6):
         # TODO: Add progress indication/messages.
         print("Building heightmap...")
-        self.build_base_map()
+        self.build_base_map(hill_cnt)
         print("Calculating precipitation...")
         self.compute_precipitation()
         print("Eroding...")
@@ -248,7 +248,7 @@ class WorldGenerator(object):
         return self.interpolated_altitude(x, y) <= SAND_HEIGHT
 
     @jit
-    def add_hill(self, cnt, base_radius, radius_var, height):
+    def add_land(self, cnt, base_radius, radius_var, height):
         for i in range(cnt):
             min_radius = base_radius * (1.0 - radius_var)
             max_radius = base_radius * (1.0 + radius_var)
@@ -286,8 +286,8 @@ class WorldGenerator(object):
                     h = h * water_coef
                 self._hm[x, y] = h
 
-    def build_base_map(self):
-        self.add_hill(600, 16 * self.width / 200, 0.7, 0.3)
+    def build_base_map(self, hill_cnt=60):
+        self.add_land(hill_cnt, 16 * self.width / 200, 0.7, 0.3)
         self._hm = hm.normalize(self._hm)
         hm.add_fbm(self._hm, noise2d, 2.20 * self.width / 400, 2.2 * self.width / 400, 0, 0, 10, 1.0, 2.05)
         self._hm = hm.normalize(self._hm)
@@ -414,11 +414,11 @@ class WorldGenerator(object):
                 temphm[x, 0] = psum/pcount
                 for y in range(1, self.height):
                     if (y-2) >= 0:
-                        sum -= np.sum(self._precipitation[minx:maxx, y-2])
-                        count -= (maxx-minx)
+                        psum -= np.sum(self._precipitation[minx:maxx, y-2])
+                        pcount -= (maxx-minx)
                     if (y+2) < self.height:
-                        sum += np.sum(self._precipitation[minx:maxx, y+2])
-                        count += (maxx-minx)
+                        psum += np.sum(self._precipitation[minx:maxx, y+2])
+                        pcount += (maxx-minx)
                     temphm[x, y] = sum/count
         self._precipitation = self.temphm.copy()
         hm.normalize(self._precipitation)
