@@ -8,7 +8,7 @@ import noise
 import Heightmap as hm
 from tcod import Color
 from itertools import count
-from numba import jit
+#from numba import jit
 
 noise1d = noise.NoiseGenerator(1)
 noise2d = noise.NoiseGenerator(2)
@@ -247,7 +247,7 @@ class WorldGenerator(object):
     def on_sea_p(self, x, y):
         return self.interpolated_altitude(x, y) <= SAND_HEIGHT
 
-    @jit
+
     def add_land(self, cnt, base_radius, radius_var, height):
         for i in range(cnt):
             min_radius = base_radius * (1.0 - radius_var)
@@ -257,7 +257,6 @@ class WorldGenerator(object):
             yh = self.random.randrange(0, self.height)
             hm.add_hill(self._hm, xh, yh, radius, height)
 
-    @jit
     def set_land_mass(self, land_mass, water_level):
         "Ensure that a proportion <land_mass | [0,1]> of the map is above sea level."
         heightcount = np.zeros(256)

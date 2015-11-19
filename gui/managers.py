@@ -170,7 +170,6 @@ class GuiEventLoop(BasicEventLoop):
             #self.handle_keys(key)
             if self.ipykernel:
                 self.ipy_kernel_callback(self.ipykernel)
-
             root.clear()
             self.step(root)
             root.flush()
@@ -293,6 +292,5 @@ if support_ipy:
     def init_gui_manager(kernel):
         global window_manager, gui_loop
         window_manager = WindowManager(80, 60)
-        gui_loop = GuiEventLoop(wm, kernel)
+        gui_loop = GuiEventLoop(window_manager, kernel)
         gui_loop.run()
-    

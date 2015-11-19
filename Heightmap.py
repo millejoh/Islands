@@ -1,5 +1,4 @@
 from math import floor, ceil, sqrt
-from numba import jit
 
 __author__ = 'millejoh'
 import numpy as np
@@ -105,7 +104,7 @@ def normal(data, x, y, water_level):
     return n
 
 
-@jit
+
 def add_hill(data, cx, cy, radius, height):
     """
     """
@@ -140,7 +139,6 @@ def dig_hill(data, hx, hy, radius, height):
                 data[x, y] -= z * coef
 
 
-@jit
 def add_fbm(data, noise, mulx, muly, addx, addy, octaves, delta, scale):
     "Perturb  by adding fbm noise values."
     width, height = data.shape

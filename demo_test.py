@@ -7,6 +7,11 @@ from tcod.gameloop import BasicEventLoop
 from gui.managers import GuiEventLoop, WindowManager
 from gui.window import Window, ListWindow, Viewport
 from worldgen import WorldGenerator
+try:
+    import IPython.core
+    ipython_enabled = True
+except ImportError:
+    ipython_enabled = False
 
 class DemoGame(BasicEventLoop):
 
@@ -50,7 +55,7 @@ class WorldView(Viewport):
     def __init__(self, **keys):
         super().__init__(**keys)
         self.world_factory = WorldGenerator(self.map_width, self.map_height)
-        self.world_factory.build_base_map()
+        self.world_factory.build_base_map(hill_cnt=6)
         self.elevation = self.world_factory._hm
 
     def draw_elevations(self, as_color=True):
@@ -90,11 +95,18 @@ class WorldGame(GuiEventLoop):
         #self.game_step()
         end = tcod.sys_elapsed_milli()
 
-
-if __name__ == '__main__':
+def make_sim(kernel=None):
     wm = WindowManager(80, 60)
     # font='12x12.png', font_flags=tcod.FONT_LAYOUT_ASCII_INROW|tcod.FONT_TYPE_GREYSCALE,
     #                    font_width=16, font_height=48)
-    game = DemoGuiGame(wm)
+    if kernel:
+        game = WorldGame(wm, ipykernel=kernel)
+    else:
+        game = WorldGame(wm)
     game.initialize()
+
+    return game
+
+if __name__ == '__main__':
+    game = make_sim()
     game.run()

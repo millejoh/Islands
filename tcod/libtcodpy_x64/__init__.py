@@ -52,14 +52,12 @@ def _get_cdll(libname):
         
         returns the ctypes lib object
     '''
-    path = os.path.realpath(__path__[0])
-    libfile = os.path.join(path, libname)
     try:
         # get library from the package
-        return ctypes.WinDLL(os.path.realpath(libfile))
+        return ctypes.cdll[os.path.realpath(os.path.join(__path__[0], libname))]
     except OSError:
         # or try to get get it from the development path
-        return ctypes.WinDLL[os.path.realpath(os.path.join(path,
+        return ctypes.cdll[os.path.realpath(os.path.join(__path__[0],
                                                          '../..', libname))]
 
 if sys.platform.find('linux') != -1:
@@ -72,33 +70,34 @@ elif sys.platform.find('haiku') != -1:
     _lib = _get_cdll('libtcod.so')
     HAIKU = True
 else:
-    _sdl_lib = ctypes.windll.SDL2 # _get_cdll('SDL2.dll')
+    _get_cdll('SDL2.dll')
     try:
-        _lib = ctypes.windll.libtcod
-        # _lib = _get_cdll('libtcod.dll')
-        MSVC=True
-    except WindowsError:
         _lib = _get_cdll('libtcod-mingw.dll')
         MINGW=True
+    except WindowsError:
+        _lib = _get_cdll('libtcod.dll')
+        MSVC=True
     # On Windows, ctypes doesn't work well with function returning structs,
-    # so we have to use the _wrapper functions instead
+    # so we have to user the _wrapper functions instead
     _lib.TCOD_color_multiply = _lib.TCOD_color_multiply_wrapper
     _lib.TCOD_color_add = _lib.TCOD_color_add_wrapper
     _lib.TCOD_color_multiply_scalar = _lib.TCOD_color_multiply_scalar_wrapper
     _lib.TCOD_color_subtract = _lib.TCOD_color_subtract_wrapper
     _lib.TCOD_color_lerp = _lib.TCOD_color_lerp_wrapper
     _lib.TCOD_console_get_default_background = _lib.TCOD_console_get_default_background_wrapper
-    _lib.TCOD_console_get_default_foreground = _lib.TCOD_console_get_default_foreground_wrapper
     _lib.TCOD_console_set_default_background = _lib.TCOD_console_set_default_background_wrapper
+    _lib.TCOD_console_get_default_foreground = _lib.TCOD_console_get_default_foreground_wrapper
     _lib.TCOD_console_set_default_foreground = _lib.TCOD_console_set_default_foreground_wrapper
     _lib.TCOD_console_get_char_background = _lib.TCOD_console_get_char_background_wrapper
-    _lib.TCOD_console_get_char_foreground = _lib.TCOD_console_get_char_foreground_wrapper
     _lib.TCOD_console_set_char_background = _lib.TCOD_console_set_char_background_wrapper
+    _lib.TCOD_console_get_char_foreground = _lib.TCOD_console_get_char_foreground_wrapper
     _lib.TCOD_console_set_char_foreground = _lib.TCOD_console_set_char_foreground_wrapper
     _lib.TCOD_console_get_fading_color = _lib.TCOD_console_get_fading_color_wrapper
     _lib.TCOD_image_get_pixel = _lib.TCOD_image_get_pixel_wrapper
+    _lib.TCOD_image_put_pixel = _lib.TCOD_image_put_pixel_wrapper
     _lib.TCOD_image_get_mipmap_pixel = _lib.TCOD_image_get_mipmap_pixel_wrapper
     _lib.TCOD_parser_get_color_property = _lib.TCOD_parser_get_color_property_wrapper
+    _lib.TCOD_image_set_key_color = _lib.TCOD_image_set_key_color_wrapper
 
 HEXVERSION = 0x010600
 STRVERSION = "1.6.0"
@@ -108,9 +107,10 @@ TECHVERSION = 0x01060000
 # color module
 ############################
 class Color(Structure):
-    _fields_ = [('r', ctypes.c_uint, 8),
-                ('g', ctypes.c_uint, 8),
-                ('b', ctypes.c_uint, 8)]
+    _fields_ = [('r', c_uint8),
+                ('g', c_uint8),
+                ('b', c_uint8),
+                ]
 
     def __eq__(self, c):
         return _lib.TCOD_color_equals(self, c)
@@ -148,9 +148,8 @@ class Color(Structure):
         yield self.b
 
 # Should be valid on any platform, check it!  Has to be done after Color is defined.
-if MAC:
-    from .cprotos import setup_protos
-    setup_protos(_lib)
+from .cprotos import setup_protos
+setup_protos(_lib)
 
 _lib.TCOD_color_equals.restype = c_bool
 _lib.TCOD_color_multiply.restype = Color
@@ -755,11 +754,6 @@ def console_map_string_to_font(s, fontCharX, fontCharY):
     else:
         _lib.TCOD_console_map_string_to_font_utf(s, fontCharX, fontCharY)
 
-def console_set_dirty(tlx, tly, brx, bry):
-    """Mark region of root console for redraw.
-    """
-    _lib.TCOD_console_set_dirty(tlx, tly, brx, bry)
-
 def console_is_fullscreen():
     return _lib.TCOD_console_is_fullscreen()
 
@@ -878,9 +872,6 @@ def console_vline(con, x, y, l, flag=BKGND_DEFAULT):
 def console_print_frame(con, x, y, w, h, clear=True, flag=BKGND_DEFAULT, fmt=0):
     _lib.TCOD_console_print_frame(c_void_p(con), x, y, w, h, c_int(clear), flag, c_char_p(fmt))
 
-def console_print_double_frame(con, x, y, w, h, clear=True, flag=BKGND_DEFAULT, fmt=0):
-    _lib.TCOD_console_print_double_frame(c_void_p(con), x, y, w, h, c_int(clear), flag, c_char_p(fmt))
-
 def console_set_color_control(con,fore,back) :
     _lib.TCOD_console_set_color_control(con,fore,back)
 
@@ -948,6 +939,9 @@ def console_set_key_color(con, col):
 
 def console_delete(con):
     _lib.TCOD_console_delete(con)
+
+def console_set_dirty(tlx, tly, width, height):
+    _lib.TCOD_console_set_dirty(tlx, tly, width, height)
 
 # fast color filling
 def console_fill_foreground(con,r,g,b) :

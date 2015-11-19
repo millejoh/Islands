@@ -1,7 +1,6 @@
 from collections import namedtuple
 from math import sqrt, floor
 import numpy as np
-from numba import jit
 
 __author__ = 'millejoh'
 
@@ -21,7 +20,7 @@ WAVELET_SCALE = 2.0
 def cubic(x):
     return x * x * (3 - 2 * x)
 
-@jit
+
 def lerp(c0, c1, dx):
     """Calculated interpolated value between `c0` and `c1` given dx that is
      between 0 and 1.
@@ -100,7 +99,7 @@ def noise_wavelet_downsample(wav_from, wav_to, stride):
     for i in range(WAVELET_TILE_SIZE / 2):
         wav_to[i * stride] = 0
         for k in range(2 * i - WAVELET_ARAD, 2 * i + WAVELET_ARAD):
-            wav_to[i * stride] += a[k - 2 * i] * wav_from[absmod(k, WAVELET_TILE_SIZE) * stride]
+            wav_to[i * stride] += acoeffs[k - 2 * i] * wav_from[absmod(k, WAVELET_TILE_SIZE) * stride]
 
 
 class NoiseGenerator(object):
@@ -137,7 +136,6 @@ class NoiseGenerator(object):
             f[i] *= magnitude
         return f
 
-    @jit
     def lattice(self, ix, fx, iy, fy, iz, fz, iw, fw):
         n = np.array([ix, iy, iz, iw])
         f = np.array([fx, fy, fz, fw])
@@ -529,7 +527,6 @@ class NoiseGenerator(object):
 
         return 27.0 * (n0 + n1 + n2 + n3 + n4)
 
-    @jit
     def noise_fbm_int(self, f, octaves, func):
         tf = np.array(f)
         value = 0
