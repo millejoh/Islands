@@ -8,6 +8,7 @@ import noise
 import Heightmap as hm
 from tcod import Color
 from itertools import count
+from collections import namedtuple
 #from numba import jit
 
 noise1d = noise.NoiseGenerator(1)
@@ -181,9 +182,17 @@ def get_interpolated_float(arr, x, y, width, height):
     iS = (1.0-dx)*iSW + dx*iSE
     return (1.0-dy)*iN + dy * iS
 
+MapData = namedtuple('MapData', ['slope', 'area', 'flow_dir', 'up_dir', 'in_flags', 'river_id',
+                                 'river_length'])
 
+River = namedtuple('River', ['coords', 'strength'])
+
+def default_map_deata():
+    return
+    
 class WorldGenerator(object):
-    def __init__(self, width, height):
+    def __init__(self, width, height, erosion_factor=0.01, max_erosion_alt = 0.9,
+                 sedimentation_factor=0.01, mudslide_coef=0.4):
         self.width = width
         self.height = height
         self._hm = hm.new(width, height) # World Heightmap
@@ -193,7 +202,12 @@ class WorldGenerator(object):
         self._biome_map = np.zeros((width, height))
         self._clouds = np.zeros((width, height))
         self.random = random.Random() # Random number generator
-
+        self.map_data = np.full((width, height),dtype=MapData)
+        self.erosion_factor = erosion_factor
+        self.max_erosion_alt = max_erosion_alt
+        self.sedimentation_factor = sedimentation_factor
+        self.mudslide_coef = mudslide_coef
+        
     def generate(self, hill_cnt=6):
         # TODO: Add progress indication/messages.
         print("Building heightmap...")
@@ -395,7 +409,83 @@ class WorldGenerator(object):
                  self._precipitation[x, y] = v
 
     def erode_map(self):
-        pass
+        new_map = hm.new(self.width, self.height)
+        # Compute flow and slope maps
+        for i in range(5, 1, -1):
+            for y in range(self.height):
+                for x in range(self.width):
+                    h = self._hm[x, y]
+                    md = self.map_data[x, y]
+                    hmin, hmax = h, hm
+                    min_dir, max_dir = 0
+                    for i in range(0, 8):
+                        ix = x + dirx[i]
+                        iy = y + diry[i]
+                        if in_rectangle(ix, iy, self.width, self.height):
+                            h2 = self._hm[ix, iy]
+                            if h2 < hmin:
+                                hmin = h2
+                                min_dir = i
+                            elif h2 > hmax:
+                                hmax = h2
+                                max_dir = i
+                    md.flow_dir = min_dir
+                    md.up_dir = max_dir
+                    md.slope = (hmin - h) * dircoef[min_dir] # Is (hmin-h) only once?
+
+            for y in range(self.height):
+                for x in range(self.width):
+                    md = self.map_data[x, y]
+                    md2 = self.map_data[x, y]
+                    sediment, end, ix, iy, old_flow = 0, False, x, y, md.flow_dir
+                    while not end:
+                        h = self._hm[ix, iy]
+                        if h < (SAND_HEIGHT - 0.01):
+                            break
+                        if md2.flow_dir == oppdir[old_flow]:
+                            h += self.sedimentation_factor * sediment
+                            self._hm[ix, iy] = h
+                            end = True
+                        else:
+                            h += self.precipitation(ix, iy) * self.erosion_factor * md2.slope
+                            h = max(h, SAND_HEIGHT)
+                            sediment -= md2.slope
+                            self._hm[ix, iy] = h
+                            old_flow = md2.flow_dir
+                            ix += dirx[old_flow]
+                            iy += diry[old_flow]
+                            md2 = self.map_data[ix, iy]
+
+        # Mudslides and smoothing
+        sand_coef = 1 / (1-SAND_HEIGHT)
+        for x in range(self.width):
+            for y in range(self.height):
+                h = self._hm[x, y]
+                if (h < SAND_HEIGHT - 0.01) or (h >= MAX_EROSION_ALT):
+                    new_map[x, y] = h
+                    continue
+                sum_delta1, sum_delta2 = 0.0, 0.0
+                nb1, nb2 = 1, 1
+                for i in range(1,8):
+                    ix = x+dirx[i]
+                    iy = y+diry[i]
+                    if (in_rectangle(ix, iy, self.width, self.height)):
+                        ih = self._hm[ix, iy]
+                        if ih < h:
+                            # Diagonal neighbors
+                            if (i==1) or (i==3) or (i==6) or (i==8):
+                                sum_delta1 += (ih - h) * 0.4
+                                nb1 += 1
+                            else: # Adjacent neighbor
+                                sum_delta2 += (ih - h) * 1.6
+                                nb2 += 1
+                dh = sum_delta1/nb1 + sum_delta2/nd2
+                dh *= self.mudslide_coef
+                hcoef = (h - SAND_HEIGHT) * sand_coef
+                dh *= (1.0-hcoef*hceof*hcoef) # Smoothing decrease as altitude increases
+                new_map[x, y] = h+dh
+        self._hm = np.copy(new_map)
+
 
     def generate_rivers(self):
         pass

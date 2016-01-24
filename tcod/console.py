@@ -39,7 +39,8 @@ class Console(object):
         tcod.console_clear(self._c)
 
     def __del__(self):
-        tcod.console_delete(self._c)
+        if self._c:
+            tcod.console_delete(self._c)
 
     def __len__(self):
         return self.width*self.height

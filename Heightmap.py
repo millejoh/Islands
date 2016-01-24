@@ -11,17 +11,16 @@ def lerp(c0, c1, dx):
     return (1.0 - dx) * c0 + dx * c1
 
 
-
 def new(width, height):
     return np.zeros((width, height), dtype=np.float64)
 
 
 def randomize(data, scale=1.0, translate=0.0):
-    data = (np.random.rand(*self.data.shape) * scale) + translate
+    data = (np.random.rand(*data.shape) * scale) + translate
 
 
 def clear_map(data):
-    data[:,:] = 0.0
+    data[:, :] = 0.0
 
 
 def clamp(data, min_, max_):
@@ -39,6 +38,7 @@ def normalize(data, min_=0.0, max_=1.0):
     b = max_ - h_max * m
     data = data * m + b
     return data
+
 
 def lerp(data, hm, coef):
     """Calculate linear interpolation between two maps.
@@ -77,11 +77,11 @@ def interpolated_value(data, x, y):
 def normal(data, x, y, water_level):
     n = np.zeros(3)
     w, h = data.shape
-    if x >= (w-1) or y >= (h-1):
+    if x >= (w - 1) or y >= (h - 1):
         return
-    h0 = interpolated_value(data, x  , y)
-    hx = interpolated_value(data, x+1, y)
-    hy = interpolated_value(data, x  , y+1)
+    h0 = interpolated_value(data, x, y)
+    hx = interpolated_value(data, x + 1, y)
+    hy = interpolated_value(data, x, y + 1)
     if h0 < water_level:
         h0 = water_level
     if hx < water_level:
@@ -92,17 +92,16 @@ def normal(data, x, y, water_level):
     #      0            1
     #      hx-h0        hy-h0
     # vz = vx cross vy
-    n[0] = 255*(h0-hx)
-    n[1] = 255*(h0-hy)
+    n[0] = 255 * (h0 - hx)
+    n[1] = 255 * (h0 - hy)
     n[2] = 16.0
     # normalize
-    invlen=1.0 / sqrt(n[0]*n[0]+n[1]*n[1]+n[2]*n[2])
-    n[0]*=invlen
-    n[1]*=invlen
-    n[2]*=invlen
+    invlen = 1.0 / sqrt(n[0] * n[0] + n[1] * n[1] + n[2] * n[2])
+    n[0] *= invlen
+    n[1] *= invlen
+    n[2] *= invlen
 
     return n
-
 
 
 def add_hill(data, cx, cy, radius, height):
@@ -125,14 +124,14 @@ def add_hill(data, cx, cy, radius, height):
 
 def dig_hill(data, hx, hy, radius, height):
     w, h = data.shape
-    hradius2 = radius*radius
+    hradius2 = radius * radius
     coef = height / hradius2
     minx = max(0, hx - radius)
     maxx = min(w, hx + radius)
     miny = max(0, hy - radius)
     maxy = min(h, hy + radius)
     for x in range(minx, maxx):
-        xdist = (x - hx)*(x - hx)
+        xdist = (x - hx) * (x - hx)
         for y in range(miny, maxy):
             z = hradius2 - xdist - (y - hy) * (y - hy)
             if z > 0.0:
@@ -199,9 +198,9 @@ def kernel_transform(data, kernel_size, dx, dy, weight, min_level, max_level):
                     value is <= maxLevel."""
     w, h = data.shape
     raveled_data = data.ravel()
-    for x in range(w-1):
+    for x in range(w - 1):
         offset = x
-        for y in range(h-1):
+        for y in range(h - 1):
             if raveled_data[offset] >= min_level and raveled_data[offset] <= max_level:
                 val = 0.0
                 total_weight = 0.0
@@ -211,8 +210,9 @@ def kernel_transform(data, kernel_size, dx, dy, weight, min_level, max_level):
                     if (0 <= nx <= w) and (0 <= ny <= h):
                         val += weight[i] * data[nx, ny]
                         total_weight += weight[i]
-                raveled_data[offset] = val/total_weight
+                raveled_data[offset] = val / total_weight
             offset += w
+
 
 def dig_bezier(data, px, py, radius_start, depth_start, radius_end, depth_end):
     x_from = px[0]
@@ -220,12 +220,11 @@ def dig_bezier(data, px, py, radius_start, depth_start, radius_end, depth_end):
     for i in range(1000):
         t = i / 1000.0
         it = 1.0 - t
-        x_to = int(px[0]*it*it*it + 3*px[1]*t*it*it + 3*px[2]*t*t*it + px[3]*t*t*t)
-        y_to = int(py[0]*it*it*it + 3*py[1]*t*it*it + 3*py[2]*t*t*it + py[3]*t*t*t)
-        if ( x_to != x_from or y_to != y_from ):
+        x_to = int(px[0] * it * it * it + 3 * px[1] * t * it * it + 3 * px[2] * t * t * it + px[3] * t * t * t)
+        y_to = int(py[0] * it * it * it + 3 * py[1] * t * it * it + 3 * py[2] * t * t * it + py[3] * t * t * t)
+        if (x_to != x_from or y_to != y_from):
             radius = radius_start + (radius_end - radius_start) * t
             depth = depth_start + (depth_end - depth_start) * t
-            dig_hill(hm, x_to, y_to, radius, depth)
-            x_from= x_to
-            y_from= y_to
-
+            dig_hill(data, x_to, y_to, radius, depth)
+            x_from = x_to
+            y_from = y_to
