@@ -161,7 +161,7 @@ def find_index(indices, val):
     for bound, i in zip(indices, range(len(indices))):
         if val < bound:
             return i - 1, i
-    return len(indices), len(indices) - 1
+    return len(indices)-2, len(indices) - 1
 
 
 def rand_float_range(fmin, fmax, random=random):
@@ -182,14 +182,23 @@ def get_interpolated_float(arr, x, y, width, height):
     iS = (1.0-dx)*iSW + dx*iSE
     return (1.0-dy)*iN + dy * iS
 
-MapData = namedtuple('MapData', ['slope', 'area', 'flow_dir', 'up_dir', 'in_flags', 'river_id',
-                                 'river_length'])
+class MapData(object):
+    __slots__ = ['slope', 'area', 'flow_dir', 'up_dir', 'in_flags', 'river_id', 'river_length']
+    def __init__(self, slope=0.0, area=0.0, flow_dir=0, up_dir=0, in_flags=0, river_id=0, river_length=0.0):
+        self.slope = slope
+        self.area = area
+        self.flow_dir = flow_dir
+        self.up_dir = up_dir
+        self.in_flags = in_flags
+        self.river_id = river_id
+        self.river_length = river_length
 
-River = namedtuple('River', ['coords', 'strength'])
+class River(object):
+    __slots__ = ['coords', 'strength']
+    def __init__(self, coords=0, strength=0.0):
+        self.coords = 0
+        self.strength = strength
 
-def default_map_deata():
-    return
-    
 class WorldGenerator(object):
     def __init__(self, width, height, erosion_factor=0.01, max_erosion_alt = 0.9,
                  sedimentation_factor=0.01, mudslide_coef=0.4):
@@ -200,14 +209,19 @@ class WorldGenerator(object):
         self._precipitation = hm.new(width, height)
         self._hm_temperature = hm.new(width, height)
         self._biome_map = np.zeros((width, height))
+        self.cloud_dx, self.cloud_tot_dx = 0.0, 0.0
         self._clouds = np.zeros((width, height))
         self.random = random.Random() # Random number generator
-        self.map_data = np.full((width, height),dtype=MapData)
         self.erosion_factor = erosion_factor
         self.max_erosion_alt = max_erosion_alt
         self.sedimentation_factor = sedimentation_factor
         self.mudslide_coef = mudslide_coef
-        
+        self.noise = noise.NoiseGenerator(2)
+        #
+        map_data = [MapData() for _ in range(width*height)] #np.full((width, height),dtype=MapData)
+        self.map_data = np.array(map_data)
+        self.map_data.shape = (width, height)
+
     def generate(self, hill_cnt=6):
         # TODO: Add progress indication/messages.
         print("Building heightmap...")
@@ -266,7 +280,7 @@ class WorldGenerator(object):
         for i in range(cnt):
             min_radius = base_radius * (1.0 - radius_var)
             max_radius = base_radius * (1.0 + radius_var)
-            radius = self.random.randrange(int(min_radius), int(max_radius))
+            radius = self.random.randrange(round(min_radius), round(max_radius))
             xh = self.random.randrange(0, self.width)
             yh = self.random.randrange(0, self.height)
             hm.add_hill(self._hm, xh, yh, radius, height)
@@ -416,8 +430,8 @@ class WorldGenerator(object):
                 for x in range(self.width):
                     h = self._hm[x, y]
                     md = self.map_data[x, y]
-                    hmin, hmax = h, hm
-                    min_dir, max_dir = 0
+                    hmin, hmax = h, h
+                    min_dir, max_dir = 0, 0
                     for i in range(0, 8):
                         ix = x + dirx[i]
                         iy = y + diry[i]
@@ -435,8 +449,8 @@ class WorldGenerator(object):
 
             for y in range(self.height):
                 for x in range(self.width):
-                    md = self.map_data[x, y]
-                    md2 = self.map_data[x, y]
+                    md = self.map_data[x,y]
+                    md2 = self.map_data[x,y]
                     sediment, end, ix, iy, old_flow = 0, False, x, y, md.flow_dir
                     while not end:
                         h = self._hm[ix, iy]
@@ -454,14 +468,14 @@ class WorldGenerator(object):
                             old_flow = md2.flow_dir
                             ix += dirx[old_flow]
                             iy += diry[old_flow]
-                            md2 = self.map_data[ix, iy]
+                            md2 = self.map_data[ix,iy]
 
         # Mudslides and smoothing
         sand_coef = 1 / (1-SAND_HEIGHT)
         for x in range(self.width):
             for y in range(self.height):
                 h = self._hm[x, y]
-                if (h < SAND_HEIGHT - 0.01) or (h >= MAX_EROSION_ALT):
+                if (h < SAND_HEIGHT - 0.01) or (h >= self.max_erosion_alt):
                     new_map[x, y] = h
                     continue
                 sum_delta1, sum_delta2 = 0.0, 0.0
@@ -479,13 +493,43 @@ class WorldGenerator(object):
                             else: # Adjacent neighbor
                                 sum_delta2 += (ih - h) * 1.6
                                 nb2 += 1
-                dh = sum_delta1/nb1 + sum_delta2/nd2
+                dh = sum_delta1/nb1 + sum_delta2/nb2
                 dh *= self.mudslide_coef
                 hcoef = (h - SAND_HEIGHT) * sand_coef
-                dh *= (1.0-hcoef*hceof*hcoef) # Smoothing decrease as altitude increases
+                dh *= (1.0-hcoef*hcoef*hcoef) # Smoothing decrease as altitude increases
                 new_map[x, y] = h+dh
         self._hm = np.copy(new_map)
 
+    def update_clouds(self, elapsed_time):
+        self.cloud_tot_dx += elapsed_time*5
+        self.cloud_dx += elapsed_time*5
+        if self.cloud_dx >= 1.0:
+            cols_to_translate = round(self.cloud_dx)
+            self.cloud_dx -= cols_to_translate
+            for x in range(cols_to_translate, self.width):
+                for y in range(0,self.height):
+                    self._clouds[x-cols_to_translate, y] = self._clouds[x,y]
+        f = [0,0]
+        for x in range(self.width-cols_to_translate, self.width):
+            for y in range(0, self.height):
+                f[0] = 6.0 * (x+self.cloud_tot_dx) / self.width
+                f[1] = 6.0 * y / self.height
+                self._clouds[x, y] = 0.5 * (1.0+0.8*self.noise.get_fbm(f, 4.0, 'SIMPLEX'))
+
+    @property
+    def cloud_thickness(self, x, y):
+        x += self.cloud_dx
+        ix, iy = round(x), round(y)
+        ix1 = min([self.width-1, ix+1])
+        iy1 = min([self.height-1, iy+1])
+        fdx, fdy = x - ix, y - iy
+        v1 = self._clouds[ix, iy]
+        v2 = self._clouds[ix1, iy1]
+        v3 = self._clouds[ix, iy1]
+        v4 = self._clouds[ix1, iy1]
+        vx1 = (1.0-fdx)*v1 + fdx*v2
+        vx2 = (1.0-fdx)*v3 + fdx*v4
+        return (1.0-fdy)*vx1 + fdy*vx2
 
     def generate_rivers(self):
         pass
@@ -508,8 +552,8 @@ class WorldGenerator(object):
                     if (y+2) < self.height:
                         psum += np.sum(self._precipitation[minx:maxx, y+2])
                         pcount += (maxx-minx)
-                    temphm[x, y] = sum/count
-        self._precipitation = self.temphm.copy()
+                    temphm[x, y] = psum / pcount
+        self._precipitation = temphm.copy()
         hm.normalize(self._precipitation)
 
     def compute_temperatures_and_biomes(self):
@@ -554,3 +598,6 @@ def test_clamp():
     assert clamp(0, 10, -1) == 0
     assert clamp(0, 10, 50) == 10
 
+if __name__ == "__main__":
+    wg = WorldGenerator(100,100)
+    wg.generate()
