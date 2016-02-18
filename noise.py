@@ -1,6 +1,7 @@
 from collections import namedtuple
 from math import sqrt, floor
 import numpy as np
+from numba import jit
 
 __author__ = 'millejoh'
 
@@ -136,6 +137,7 @@ class NoiseGenerator(object):
             f[i] *= magnitude
         return f
 
+    # @jit
     def lattice(self, ix, fx, iy, fy, iz, fz, iw, fw):
         n = np.array([ix, iy, iz, iw])
         f = np.array([fx, fy, fz, fw])

@@ -203,8 +203,12 @@ class GuiEventLoop(BasicEventLoop):
             window.on_mouse_event(self.last_mouse_click)
 
     def send_key_event(self, window, key, x, y):
-        kevent = KeyEvent(key, window=window, winx=x, winy=y)
-        window.on_key_event(kevent)
+        key.window = window
+        key.winx = x
+        key.winy = y
+        window.on_key_event(key)
+#        kevent = KeyEvent(key, window=window, winx=x, winy=y)
+
 
     def fade_for_window(self, win):
         focus = self.window_with_mouse_focus()

@@ -1,7 +1,7 @@
-from math import floor, ceil, sqrt
-
 __author__ = 'millejoh'
 import numpy as np
+import tcod
+from math import floor, ceil, sqrt
 
 
 def lerp(c0, c1, dx):
@@ -151,7 +151,7 @@ def add_fbm(data, noise, mulx, muly, addx, addy, octaves, delta, scale):
         f[0] = (x + addx) * xcoef
         for y in range(height):
             f[1] = (y + addy) * ycoef
-            value = delta + noise.get_fbm(f, octaves) * scale
+            value = delta + tcod.noise_get_fbm(noise, f, octaves, tcod.NOISE_SIMPLEX) #noise.get_fbm(f, octaves) * scale
             data[x, y] += value
             if value < min:
                 min = value
@@ -198,16 +198,16 @@ def kernel_transform(data, kernel_size, dx, dy, weight, min_level, max_level):
                     value is <= maxLevel."""
     w, h = data.shape
     raveled_data = data.ravel()
-    for x in range(w - 1):
+    for x in range(w):
         offset = x
-        for y in range(h - 1):
+        for y in range(h):
             if raveled_data[offset] >= min_level and raveled_data[offset] <= max_level:
                 val = 0.0
                 total_weight = 0.0
                 for i in range(kernel_size):
                     nx = x + dx[i]
                     ny = y + dy[i]
-                    if (0 <= nx <= w) and (0 <= ny <= h):
+                    if (0 <= nx < w) and (0 <= ny < h):
                         val += weight[i] * data[nx, ny]
                         total_weight += weight[i]
                 raveled_data[offset] = val / total_weight

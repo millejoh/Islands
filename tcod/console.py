@@ -28,6 +28,8 @@ ConsoleCell = namedtuple('ConsoleCell', ['symbol', 'foreground', 'background'])
 
 
 class Console(object):
+    """Abstract the TCOD console object to be more Pythonic.
+    """
     def __init__(self, width, height):
         self.width = width
         self.height = height

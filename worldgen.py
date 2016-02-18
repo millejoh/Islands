@@ -6,13 +6,14 @@ import numpy as np
 import random
 import noise
 import Heightmap as hm
+import tcod
 from tcod import Color
 from itertools import count
 from collections import namedtuple
 #from numba import jit
 
-noise1d = noise.NoiseGenerator(1)
-noise2d = noise.NoiseGenerator(2)
+noise1d = tcod.noise_new(1) # noise.NoiseGenerator(1)
+noise2d = tcod.noise_new(2) # noise.NoiseGenerator(2)
 
 # Height and Biome Constants
 # --------------------------
@@ -170,8 +171,8 @@ def rand_float_range(fmin, fmax, random=random):
 def get_interpolated_float(arr, x, y, width, height):
     wx = clamp(0.0, width-1, x)
     wy = clamp(0.0, height-1, y)
-    iwx = round(wx)
-    iwy = round(wy)
+    iwx = int(wx) # Or is round better?
+    iwy = int(wy)
     dx = wx - iwx
     dy = wy - iwy
     iNW = arr[iwx  , iwy]
@@ -216,7 +217,7 @@ class WorldGenerator(object):
         self.max_erosion_alt = max_erosion_alt
         self.sedimentation_factor = sedimentation_factor
         self.mudslide_coef = mudslide_coef
-        self.noise = noise.NoiseGenerator(2)
+        self.noise = tcod.noise_new(2) # noise.NoiseGenerator(2)
         #
         map_data = [MapData() for _ in range(width*height)] #np.full((width, height),dtype=MapData)
         self.map_data = np.array(map_data)
@@ -242,7 +243,7 @@ class WorldGenerator(object):
         self.compute_temperatures_and_biomes()
         print("Setting colors...")
         self.compute_colors()
-        
+
     def altitude(self, x, y):
         return self._hm[x, y]
 
@@ -250,14 +251,14 @@ class WorldGenerator(object):
         return hm.interpolated_value(self._hm, x, y)
 
     def real_altitude(self, x, y):
-        ih = clamp(0, 255, 256 * round(self.interpolated_altitude(x, y)))
+        ih = clamp(0, 255, 256 * (self.interpolated_altitude(x, y)))
         (i0, i1) = find_index(altIndexes, ih)
 
         return altitudes[i0] + (altitudes[i1] - altitudes[i0]) * (ih - altIndexes[i0]) / (
             altIndexes[i1] - altIndexes[i0])
 
     def precipitation(self, x, y):
-        iprec = clamp(0, 255, 256 * round(self._precipitation[x, y]))  # tcod.heightmap_get_value(self._precipitation, x,y)))
+        iprec = clamp(0, 255, 256 * (self._precipitation[x, y]))  # tcod.heightmap_get_value(self._precipitation, x,y)))
         (i0, i1) = find_index(precIndexes, iprec)
 
         return precipitations[i0] + (precipitations[i1] - precipitations[i0]) * (iprec - precIndexes[i0]) / \
@@ -267,14 +268,13 @@ class WorldGenerator(object):
         return self._hm_temperature[x, y]
 
     def biome(self, x, y):
-        return self._biome_map[round(x), round(y)]
+        return self._biome_map[int(x), int(y)]
 
     def interpolated_normal(self, x, y):
         return self._hm2.normal(x, y, SAND_HEIGHT)
 
     def on_sea_p(self, x, y):
         return self.interpolated_altitude(x, y) <= SAND_HEIGHT
-
 
     def add_land(self, cnt, base_radius, radius_var, height):
         for i in range(cnt):
@@ -291,10 +291,11 @@ class WorldGenerator(object):
         for x in range(self.width):
             for y in range(self.height):
                 h = self._hm[x, y]
-                ih = round(h * 255)
+                if (h < 0):
+                    h = 0
+                ih = int(h * 255)
                 ih = clamp(0, 255, ih)
                 heightcount[ih] += 1
-
         tcnt = 0
         i = 0 
         while tcnt < (self.width * self.height * (1.0 - land_mass)):
@@ -314,7 +315,7 @@ class WorldGenerator(object):
                 self._hm[x, y] = h
 
     def build_base_map(self, hill_cnt=60):
-        self.add_land(hill_cnt, 16 * self.width / 200, 0.7, 0.3)
+        self.add_land(hill_cnt, 16 * self.width / 200, 0.7, 0.6)
         self._hm = hm.normalize(self._hm)
         hm.add_fbm(self._hm, noise2d, 2.20 * self.width / 400, 2.2 * self.width / 400, 0, 0, 10, 1.0, 2.05)
         self._hm = hm.normalize(self._hm)
@@ -334,7 +335,7 @@ class WorldGenerator(object):
             f[0] = 6.0 * x / self.width
             for y in range(self.height):
                 f[1] = 6.0 * y / self.height
-                self._clouds[x, y] = 0.5 * (1.0 + 0.8 * noise2d.get_fbm(f, 4, 'SIMPLEX'))
+                self._clouds[x, y] = 0.5 * (1.0 + 0.8 * tcod.noise_get_fbm(noise2d, f, 4.0, tcod.NOISE_SIMPLEX))
 
     def smooth_map(self):
         # 3x3 kernel for smoothing operations
@@ -354,8 +355,8 @@ class WorldGenerator(object):
         # // north/south winds
         for dir_y in [-1, 1]:
             for x in range(self.width-1):
-                noisex = x*5/self.width
-                water_amount = 1.0 + noise1d.get_fbm(noisex, 3, 'SIMPLEX')
+                noisex = [x*5/self.width]
+                water_amount = 1.0 + tcod.noise_get_fbm(noise1d, noisex, 3.0, tcod.NOISE_SIMPLEX)
                 start_y = self.height-1 if dir_y == -1 else 0
                 end_y = -1 if dir_y == -1 else self.height
                 for y in range(start_y, end_y, dir_y):
@@ -376,8 +377,8 @@ class WorldGenerator(object):
         # east/west winds
         for dir_x in [-1, 1]:
             for y in range(self.height-1):
-                noisey = y*5/self.height
-                water_amount = 1.0 + noise1d.get_fbm(noisey, 3, 'SIMPLEX')
+                noisey = [y*5/self.height]
+                water_amount = 1.0 + tcod.noise_get_fbm(noise1d, noisey, 3.0, tcod.NOISE_SIMPLEX)
                 start_x = self.width-1 if dir_x == -1 else 0
                 end_x = -1 if dir_x == -1 else self.width
                 for x in range(start_x, end_x, dir_x):
@@ -403,18 +404,18 @@ class WorldGenerator(object):
             #     // latitude (0 : equator, -1/1 : pole)
             for x in range(self.width):
                 f = [x/self.width, y/self.height]
-                xcoef = coef + 0.5 * noise2d.get_fbm(f, 3, 'SIMPLEX')
+                xcoef = coef + 0.5 * tcod.noise_get_fbm(noise2d, f, 3.0, tcod.NOISE_SIMPLEX)
                 self._precipitation[x,y] += (fmax-fmin)*xcoef*0.1
         # very fast blur by scaling down and up
         factor = 8
-        small_width = int((self.width+factor-1)/factor)
-        small_height = int((self.height+factor-1)/factor)
+        small_width = int((self.width+factor)/factor)
+        small_height = int((self.height+factor)/factor)
         low_res_map = np.zeros((small_width, small_height))
         for x in range(self.width):
             for y in range(self.height):
                 v = self._precipitation[x, y]
-                ix = x / factor
-                iy = y / factor
+                ix = int(x / factor)
+                iy = int(y / factor)
                 low_res_map[ix, iy] += v
         coef = 1.0 / factor
         for x in range(self.width):
@@ -504,7 +505,7 @@ class WorldGenerator(object):
         self.cloud_tot_dx += elapsed_time*5
         self.cloud_dx += elapsed_time*5
         if self.cloud_dx >= 1.0:
-            cols_to_translate = round(self.cloud_dx)
+            cols_to_translate = int(self.cloud_dx)
             self.cloud_dx -= cols_to_translate
             for x in range(cols_to_translate, self.width):
                 for y in range(0,self.height):
@@ -514,12 +515,12 @@ class WorldGenerator(object):
             for y in range(0, self.height):
                 f[0] = 6.0 * (x+self.cloud_tot_dx) / self.width
                 f[1] = 6.0 * y / self.height
-                self._clouds[x, y] = 0.5 * (1.0+0.8*self.noise.get_fbm(f, 4.0, 'SIMPLEX'))
+                self._clouds[x, y] = 0.5 * (1.0+0.8*tcod.noise_get_fbm(self.noise, f, 4.0, tcod.NOISE_SIMPLEX))
 
     @property
     def cloud_thickness(self, x, y):
         x += self.cloud_dx
-        ix, iy = round(x), round(y)
+        ix, iy = int(x), int(y)
         ix1 = min([self.width-1, ix+1])
         iy1 = min([self.height-1, iy+1])
         fdx, fdy = x - ix, y - iy
@@ -532,7 +533,61 @@ class WorldGenerator(object):
         return (1.0-fdy)*vx1 + fdy*vx2
 
     def generate_rivers(self):
-        pass
+        river_id = 0
+        # Source = sx, sy
+        # Destination = dx, dy
+
+        # Pick a random point near the coast
+        sx = random.randint(0, self.width)
+        sy = random.randint(self.height/5, 4*self.height/5)
+        h = self._hm[sx, sy]
+        while (h < SAND_HEIGHT - 0.02) or ( h >= SAND_HEIGHT):
+            sx += 1
+            if sx == self.width:
+                sx = 0
+                sy += 1
+                if sy == self.height:
+                    sy = 0
+            h = self._hm[sx, sy]
+
+        tree, rand_pt = [], []
+        tree.insert(0, (sx, sy))
+        river_id += 1
+        dx, dy = sx, sy
+        for i in range(random.randint(50, 200)):
+            rx = random.randint(sx-200, sx+200)
+            ry = random.randint(sy-200, sy+200)
+            rand_pt.insert(0, (rx, ry))
+        for (rx, ry) in rand_pt:
+            min_dist = 1E10
+            best_x, best_y = -1, -1
+            for (tx, ty) in tree:
+                dist = (tx-rx)*(tx-rx) + (ty-ry)*(ty-ry)
+                if dist < min_dist:
+                    min_dist = dist
+                    best_x, best_y = tx, ty
+            tcod.line_init(best_x, best_y, rx, ry)
+            len , cx, cy = 3, best_x, best_y
+            md = self.map_data[cx, cy]
+            if md.river_id == river_id:
+                md.river_id = 0
+            while len > 0:
+                md = self.map_data[cx, cy]
+                if md.river_id > 0:
+                    break
+                h = self._hm[cx, cy]
+                if h >= SAND_HEIGHT:
+                    md.river_id = river_id
+                    self._precipitation[cx, cy] = 1.0
+                if cx == 0 or cx == self.width-1 or cy ==0 or cy == self.height-1:
+                    len = 0
+                else:
+                    cx, cy = tcod.line_step()
+                    if cx is None or cy is None:
+                        len = 0
+                len -= 1
+            if (cx+cy*self.width != best_x+best_y*self.width):
+                tree.insert(0, (cx, cy))
 
     def smooth_precipitations(self):
         temphm = self._precipitation.copy()
@@ -599,5 +654,5 @@ def test_clamp():
     assert clamp(0, 10, 50) == 10
 
 if __name__ == "__main__":
-    wg = WorldGenerator(100,100)
+    wg = WorldGenerator(400,400)
     wg.generate()
