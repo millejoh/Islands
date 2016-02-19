@@ -1,8 +1,7 @@
 __author__ = 'millejoh'
 
 import tcod, tcod.events
-import numpy as np
-from tcod.console import RootConsole
+from numba import jit
 from tcod.gameloop import BasicEventLoop
 from tcod.events import KeyPressEvent
 from gui.managers import GuiEventLoop, WindowManager
@@ -65,19 +64,25 @@ class WorldView(Viewport):
         self.world_factory = WorldGenerator(self.map_width, self.map_height)
         self.world_factory.build_base_map(hill_cnt=60)
         self.elevation = self.world_factory._hm
+        self.needs_redraw = True
 
-
+    @jit
     def draw_elevations(self, as_color=True):
         for x in range(self.map_width):
             for y in range(self.map_height):
                 if as_color:
                     intensity = tcod.color_lerp(tcod.black, tcod.white,
                                                 self.elevation[x, y])
-                    self.map_console[x, y] = (' ', tcod.white, intensity)
+                    self.map_console.buffer.background[x, y, 0] = intensity.r
+                    self.map_console.buffer.background[x, y, 1] = intensity.g
+                    self.map_console.buffer.background[x, y, 2] = intensity.b
+        self.map_console.fill_from_buffer(False, True)
 
     def on_update(self):
-        self.clear_map()
-        self.draw_elevations()
+        if self.needs_redraw:
+            self.clear_map()
+            self.draw_elevations()
+            self.needs_redraw = False
 
     def on_key_event(self, event):
         if issubclass(type(event), KeyPressEvent):
@@ -95,10 +100,10 @@ class WorldView(Viewport):
                     self.view_tly += 1
 
 class WorldGame(GuiEventLoop):
-    def initialize(self):
+    def initialize(self, world_width=200, world_height=200):
         w, h = self.window_manager.screen_width, self.window_manager.screen_height
-        self.world_view = WorldView(tlx=0, tly=0, width=w, height=round(h * 0.6),
-                                    map_width=w, map_height=h,
+        self.world_view = WorldView(tlx=0, tly=0, width=w, height=round(h * 0.8),
+                                    map_width=world_width, map_height=world_height,
                                     view_tlx=0, view_tly=0, framed=False,
                                     window_manager=self.window_manager)
 

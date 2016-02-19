@@ -1,11 +1,11 @@
 import os.path
 from threading import Thread
 from collections import namedtuple
-
+import numpy as np
 import tcod
-import gui
 import color as color
 from tcod.string import make_colored_string
+
 
 def sys_get_events():
     mouse = tcod.Mouse()
@@ -26,33 +26,81 @@ def sys_get_events():
 
 ConsoleCell = namedtuple('ConsoleCell', ['symbol', 'foreground', 'background'])
 
+class ConsoleBuffer(object):
+    def __init__(self, console):
+        self.console = console
+        self.width = console.width
+        self.height = console.height
+        self.background = np.empty((self.width, self.height, 3), dtype=np.int32)
+        self.foreground = np.empty((self.width, self.height, 3), dtype=np.int32)
+        self.char = np.empty_like([[' '] * self.height] * self.width)
+        self.clear()
+
+    def clear(self):
+        for i in range(self.width):
+            for j in range(self.height):
+                self.background[i, j] = tcod.black
+                self.foreground[i, j] = tcod.white
+                self.char[i, j] = '.'
+
+    def flush_background(self):
+        _c = self.console._c
+        br = self.background[..., 0].ravel(order='F')
+        bg = self.background[..., 1].ravel(order='F')
+        bb = self.background[..., 2].ravel(order='F')
+        tcod.console_fill_background(_c, br, bg, bb)
+
+    def flush_foreground(self):
+        _c = self.console._c
+        fr = self.foreground[..., 0].ravel(order='F')
+        fg = self.foreground[..., 1].ravel(order='F')
+        fb = self.foreground[..., 2].ravel(order='F')
+        tcod.console_fill_foreground(_c, fr, fg, fb)
+
+    def flush_char(self):
+        _c = self.console._c
+        tcod.console_fill_char(_c, self.char.ravel())
+
+    def blit(self, fill_fore=True, fill_back=True):
+        if fill_back:
+            self.flush_background()
+        if fill_fore:
+            self.flush_foreground()
+            self.flush_char()
+
 
 class Console(object):
     """Abstract the TCOD console object to be more Pythonic.
     """
-    def __init__(self, width, height):
+
+    def __init__(self, width, height, buffered=False):
         self.width = width
         self.height = height
         self._c = tcod.console_new(width, height)
-        self.background = tcod.black
-        self.foreground = tcod.white
+        self.default_background_color = tcod.black
+        self.default_foreground_color = tcod.white
         # tcod.console_set_default_background(self._c, tcod.black)
         # tcod.console_set_default_foreground(self._c, tcod.white)
         tcod.console_clear(self._c)
+        if buffered:
+            self.buffer = ConsoleBuffer(self)
 
     def __del__(self):
         if self._c:
             tcod.console_delete(self._c)
 
     def __len__(self):
-        return self.width*self.height
+        return self.width * self.height
 
     def __getitem__(self, index):
         if isinstance(index, slice):
             raise TypeError('Console objects do not support slices. Yet.')
         x, y = index
         if x > self.width or x < 0 or y > self.height or y < 0:
-            raise IndexError('Attempt to access cell ({0}, {1}), which is out of range. Console size is ({2}, {3}).'.format(x, y, self.width, self.height))
+            raise IndexError(
+                'Attempt to access cell ({0}, {1}), which is out of range. Console size is ({2}, {3}).'.format(x, y,
+                                                                                                               self.width,
+                                                                                                               self.height))
 
         return ConsoleCell(chr(tcod.console_get_char(self._c, x, y)),
                            tcod.console_get_char_foreground(self._c, x, y),
@@ -63,7 +111,10 @@ class Console(object):
             raise TypeError('Console objects do not support slices. Yet.')
         x, y = index
         if x > self.width or x < 0 or y > self.height or y < 0:
-            raise IndexError('Attempt to access cell ({0}, {1}), which is out of range. Console size is ({2}, {3}).'.format(x, y, self.width, self.height))
+            raise IndexError(
+                'Attempt to access cell ({0}, {1}), which is out of range. Console size is ({2}, {3}).'.format(x, y,
+                                                                                                               self.width,
+                                                                                                               self.height))
 
         if isinstance(cell, tuple) and len(cell) >= 3:
             symbol, foreground, background = cell
@@ -100,19 +151,19 @@ class Console(object):
         tcod.console_set_keyboard_repeat(self._c, *val)
 
     @property
-    def background(self):
+    def default_background_color(self):
         return tcod.console_get_default_background(self._c)
 
-    @background.setter
-    def background(self, color):
+    @default_background_color.setter
+    def default_background_color(self, color):
         tcod.console_set_default_background(self._c, color)
 
     @property
-    def foreground(self):
+    def default_foreground_color(self):
         return tcod.console_get_default_foreground(self._c)
 
-    @foreground.setter
-    def foreground(self, color):
+    @default_foreground_color.setter
+    def default_foreground_color(self, color):
         tcod.console_set_default_foreground(self._c, color)
 
     @property
@@ -135,6 +186,11 @@ class Console(object):
     def window_closed(self):
         return tcod.console_is_window_closed()
 
+    def fill_from_buffer(self, fill_foreground=True, fill_background=True):
+        self.buffer.blit(fill_foreground, fill_background)
+
+    # TODO: These low-level access routines should either be renamed
+    #       or refactored to use new numpy arrays.
     def get_char_foreground(self, x, y):
         return tcod.console_get_char_foreground(self._c, x, y)
 
@@ -185,11 +241,11 @@ class Console(object):
 
         """
         xstr = make_colored_string(fmt)
-        prev_bg_color = self.background
-        if bg_color is not None: # Hear the cries for a context manager!
-            self.background = bg_color
+        prev_bg_color = self.default_background_color
+        if bg_color is not None:  # Hear the cries for a context manager!
+            self.default_background_color = bg_color
         tcod.console_print_ex(self._c, x, y, background_flag, align, xstr)
-        self.background = prev_bg_color
+        self.default_background_color = prev_bg_color
 
     def write_rect(self, x, y, w, h, fmt):
         xstr = make_colored_string(fmt)
@@ -269,6 +325,7 @@ class Console(object):
 
         self.blit(console, 0, 0, self.width, self.height, 0, 0, 1.0, 1.0)
 
+
 # TODO Implement singletons via instance().
 
 
@@ -334,7 +391,7 @@ class RootConsole(Thread, Console):
         self.renderer = renderer
         self.end_game = False
         self.max_fps = max_fps
-        self.background = background
+        self.default_background_color = background
 
     def flush(self):
         tcod.console_flush()
@@ -349,15 +406,14 @@ class RootConsole(Thread, Console):
         if show_credits:
             tcod.console_credits()
         tcod.sys_set_fps(self.max_fps)
-        
 
     def run(self, gameloop_manager):
         while (not self.end_game) and (not tcod.console_is_window_closed()):
-            #events = sys_get_events()
-            #self.handle_keys(key)
+            # events = sys_get_events()
+            # self.handle_keys(key)
             tcod.console_clear(tcod.root_console)
             gameloop_manager.step(self)
             tcod.console_flush()
 
-R = RootConsole
 
+R = RootConsole

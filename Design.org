@@ -14,6 +14,41 @@ Want to treat TCODS console as numpy array:
   c.char[5, 5]
   c.flush()
 #+END_SRC
+
+samples_py uses a meshgrid and three 1-D arrays for R, G, B components. Would be
+more readable if there was a better way than:
+
+#+BEGIN_SRC ipython :session
+  c.background_r[0,0] = red
+  c.background_g[0,0] = green
+  c.background_b[0,0] = blue
+#+END_SRC
+
+Thankfully numpy is truly awesome. Check this out:
+
+#+BEGIN_SRC ipython :session
+  a = np.zeros((10,10,3))
+  # Slow!
+  a[0,0] = tcod.blue
+  # Fast!
+  a[0,0,0] = tcod.blue.r
+  a[0,0,1] = tcod.blue.g
+  a[0,0,2] = tcod.blue.b
+
+  a[..., 2].ravel('F')
+#+END_SRC
+
+The second call works as expected, while the third call returns a 1-D array of
+all the blue component values. Note that this is really slow since numpy has to
+figure out types and do conversions. Much faster to explicitly assign the RGB
+components. Also tcod seems to do array indexing by column-major format (I think
+this is so that (x y) references match user expectations more closely).
+
+Maybe what I want is the slow, pokey, but general Console class with a
+FillConsole (or other suitably named) subclass that implements the Numpy array
+details. Implementing something similar to [[file:tcod/libtcodpy.py::class%20ConsoleBuffer:][ConsoleBuffer]], except with numpy
+arrays, seems smart.
+
 * Representing the World
 ** Logical Representation
 

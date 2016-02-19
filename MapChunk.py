@@ -173,11 +173,11 @@ class gEntity(DefaultStructure):  # , pyDatalog.Mixin):
         return (self.x, self.y, self.z)
 
     def draw(self, console):
-        back = console[self.x, self.y].background
+        back = console[self.x, self.y].default_background_color
         console[self.x, self.y] = (self.char, self.color, back)
 
     def clear(self, console):
-        back = console[self.x, self.y].background
+        back = console[self.x, self.y].default_background_color
         console[self.x, self.y] = (' ', self.color, back)
 
     def __repr__(self):

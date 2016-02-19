@@ -314,7 +314,7 @@ class Window(tc.Console):
             #self.redraw_intersection(w, fade=fade_for_window(w))
 
         if not draw_window:
-            tc.R.active_root.background = tcod.black
+            tc.R.active_root.default_background_color = tcod.black
             tc.R.active_root.draw_rect(self.tlx, self.tly,
                                        self.width, self.height,
                                        True, tcod.BKGND_SET)
@@ -715,7 +715,7 @@ class Viewport(Window):
         self.transparency = self.wmanager.opaque
         self.map_width = map_width
         self.map_height = map_height
-        self.map_console = tc.Console(map_width, map_height)
+        self.map_console = tc.Console(map_width, map_height, buffered=True)
         self.view_tlx = view_tlx
         self.view_tly = view_tly
 
