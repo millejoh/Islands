@@ -2,8 +2,8 @@
 #+STARTUP: indent
 
 * TCOD Python Wrapper
-** Fast Console/Window Objects
-Want to treat TCODS console as numpy array:
+** ConsoleBuffer: Fast Console/Window Drawing
+Want to treat TCOD console as numpy array:
 
 #+BEGIN_SRC ipython :session
   import tcod.console
@@ -38,18 +38,55 @@ Thankfully numpy is truly awesome. Check this out:
   a[..., 2].ravel('F')
 #+END_SRC
 
-The second call works as expected, while the third call returns a 1-D array of
+The second call works as expected, while the last call returns a 1-D array of
 all the blue component values. Note that this is really slow since numpy has to
 figure out types and do conversions. Much faster to explicitly assign the RGB
 components. Also tcod seems to do array indexing by column-major format (I think
-this is so that (x y) references match user expectations more closely).
+this is so that (x y) references match user expectations more closely), so the call
+to ravel is adjusted accordingly.
 
 Maybe what I want is the slow, pokey, but general Console class with a
 FillConsole (or other suitably named) subclass that implements the Numpy array
 details. Implementing something similar to [[file:tcod/libtcodpy.py::class%20ConsoleBuffer:][ConsoleBuffer]], except with numpy
 arrays, seems smart.
 
+** CL-Dormouse Port
+
+Windowing/GUI system built on tcod. This is the Islands.gui module.
+Islands.tcod is a slightly more pythonic wrapper around libtcodpy.
+
+*** Classes
+
 * Representing the World
+** Treat World State as a Relational DB?
+Or as arrays/linear spaces?
+
+Or as logic programming problem?
+
+From [[https://sites.google.com/site/pydatalog/3---datalog-and-data-integration][pydatalog]]:
+
+#+begin_src ipython :session t
+  from pyDatalog import pyDatalog
+  from sqlalchemy.ext.declarative import declarative_base
+
+  # define a base class with SQLAlchemy and pyDatalog capabilities
+  Base = declarative_base(cls=pyDatalog.Mixin, metaclass=pyDatalog.sqlMetaMixin)
+
+  from sqlalchemy import create_engine
+  from sqlalchemy.orm import sessionmaker
+
+  # create database in memory
+  engine = create_engine('sqlite:///:memory:', echo=False)
+
+  # open a session on a database, then associate it to the Base class
+  Session = sessionmaker(bind=engine)
+  session = Session()
+  Base.session = session
+
+#+end_src
+
+#+RESULTS:
+
 ** Logical Representation
 
 Some initial thoughts on data structures:
@@ -128,3 +165,39 @@ on contents on an numpy array object.
 
 For prototyping use simple 2D geometric shapes with color (and in some
 cases, maybe textures) to draw everything.
+** Objects/Props/Entities
+Props as in stage props. Have properties and physical presence in world, but otherwise do
+not actively participate in game loop like agents do.
+
+#+begin_src ipython :session t
+  class GameProp(object):
+      def __init__(self):
+          pass
+    
+#+end_src
+
+Lots of issues to consider here, but issue is how to make creating and editing
+objects as easy as possible. Think the way we want to do this is to define
+entities using org buffers.
+
+** Agents/Actors
+
+#+begin_src ipython :session t
+  class Actor(Entity):
+      def on_update(self, world_state):
+          self.observe(world_state)
+          self.think()
+          self.act(world_state)
+#+end_src
+
+** Behaviors
+
+How entities and actor interact with each other and the world.
+
+Implemented as events and finite state machines.
+** Defining entities through org-mode
+
+
+* Modeling the worlds
+Model the flow of currency (money/productivity)? Agents/citizens are sources,
+but what would be the sinks? Banks, commodity and stock exchanges are nodes?
