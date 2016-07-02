@@ -18,6 +18,22 @@ class WindowManager(object):
                  focus_fade_mode='together', font=tcod.default_font,
                  font_flags=tcod.FONT_LAYOUT_TCOD|tcod.FONT_TYPE_GREYSCALE,
                  font_width=0, font_height=0):
+        """
+        Create a libtcodpy root console and GUI window manager with a given configuration.
+
+        :param screen_width: Width of root console, in screen pixels.
+        :param screen_height:  Height of root console, in screen pixels.
+        :param auto_redraw: When TRUE, automatically redraw GUI elements when changes occur.
+        :param opaque: Default opacity for GUI elements, 0 = transparent, 1 = opaque.
+        :param invisible: If TRUE, GUI elements by default will not be shown upon instantiation.
+        :param dimmed:
+        :param bold_factor:
+        :param focus_fade_mode:
+        :param font: Font to use for root console.
+        :param font_flags:
+        :param font_width:
+        :param font_height:
+        """
         #assert root_console is not None
         self.rootc = RootConsole(screen_width, screen_height, font_file=font, font_flags=font_flags,
                                  font_width=font_width, font_height=font_height)
@@ -148,6 +164,13 @@ class WindowManager(object):
 
 class GuiEventLoop(BasicEventLoop):
     def __init__(self, window_manager, drag_delay=0.05, double_click_speed=1000, ipykernel=None):
+        """
+
+        :param window_manager:
+        :param drag_delay:
+        :param double_click_speed:
+        :param ipykernel:
+        """
         self.mouse_x = 0
         self.mouse_y = 0
         self.last_mouse_click = None

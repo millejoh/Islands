@@ -201,7 +201,7 @@ def kernel_transform(data, kernel_size, dx, dy, weight, min_level, max_level):
     for x in range(w):
         offset = x
         for y in range(h):
-            if raveled_data[offset] >= min_level and raveled_data[offset] <= max_level:
+            if data[x, y] >= min_level and data[x, y] <= max_level:
                 val = 0.0
                 total_weight = 0.0
                 for i in range(kernel_size):
@@ -210,8 +210,8 @@ def kernel_transform(data, kernel_size, dx, dy, weight, min_level, max_level):
                     if (0 <= nx < w) and (0 <= ny < h):
                         val += weight[i] * data[nx, ny]
                         total_weight += weight[i]
-                raveled_data[offset] = val / total_weight
-            offset += w
+                data[x, y] = val / total_weight
+
 
 
 def dig_bezier(data, px, py, radius_start, depth_start, radius_end, depth_end):

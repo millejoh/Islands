@@ -1,6 +1,4 @@
 # A direct translation of Jice's worldgen tool.
-#import tcod
-#from tcod.tools import Heightmap
 import math
 import numpy as np
 import random
@@ -10,7 +8,7 @@ import tcod
 from tcod import Color
 from itertools import count
 from collections import namedtuple
-#from numba import jit
+from enum import Enum
 
 noise1d = tcod.noise_new(1) # noise.NoiseGenerator(1)
 noise2d = tcod.noise_new(2) # noise.NoiseGenerator(2)
@@ -18,31 +16,61 @@ noise2d = tcod.noise_new(2) # noise.NoiseGenerator(2)
 # Height and Biome Constants
 # --------------------------
 
-biome_colors = {'SNOW': Color(248, 248, 248),
-                'TUNDRA': Color(221, 221, 187),
-                'BARE': Color(187, 187, 187),
-                'SCORCHED': Color(153, 153, 153),
-                'TAIGA': Color(204, 212, 187),
-                'SHRUBLAND': Color(194, 204, 187),
-                'GRASSLAND': Color(192, 212, 170),
-                'TEMPERATE_DESERT': Color(228, 232, 202),
-                'TEMPERATE_RAIN_FOREST': Color(164, 196, 168),
-                'TEMPERATE_DECIDUOUS_FOREST': Color(180, 201, 169),
-                'TROPICAL_RAIN_FOREST': Color(156, 187, 169),
-                'TROPICAL_SEASONAL_FOREST': Color(169, 204, 164),
-                'SUBTROPICAL_DESERT': Color(233, 221, 199)}
+class Climate(Enum):
+    arctic_alpine = 0
+    cold = 1
+    temperate = 2
+    warm = 3
+    tropical = 4
 
-biomeDiagram = [
+
+class Biome(Enum):
+    snow = 0
+    tundra = 1
+    bare = 2
+    scorched = 3
+    taiga = 4
+    shrubland = 5
+    grassland = 6
+    temperate_desert = 7
+    temperate_rain_forest = 8
+    temperate_deciduous_forest = 9
+    tropical_mountain_forest = 10
+    tropical_seasonal_forest = 11
+    subtropical_desert = 12
+    cold_desert = 13
+    boreal_forest = 14
+    hot_desert = 15
+    savanna = 16
+    tropical_dry_forest = 17
+    tropical_evergreen_forest = 18
+    thorn_forest = 19
+ 
+biome_colors = {Biome.snow: Color(248, 248, 248),
+                Biome.tundra: Color(221, 221, 187),
+                Biome.bare: Color(187, 187, 187),
+                Biome.scorched: Color(153, 153, 153),
+                Biome.taiga: Color(204, 212, 187),
+                Biome.shrubland: Color(194, 204, 187),
+                Biome.grassland: Color(192, 212, 170),
+                Biome.temperate_desert: Color(228, 232, 202),
+                Biome.temperate_rain_forest: Color(164, 196, 168),
+                Biome.temperate_deciduous_forest: Color(180, 201, 169),
+                Biome.tropical_rain_forest: Color(156, 187, 169),
+                Biome.tropical_seasonal_forest: Color(169, 204, 164),
+                Biome.subtropical_desert: Color(233, 221, 199)}
+
+biome_diagram = [
     # artic/alpine climate (below -5degC)
-    ['TUNDRA', 'TUNDRA', 'TUNDRA', 'TUNDRA', 'TUNDRA'],
+    [Biome.tundra, Biome.tundra, Biome.tundra, Biome.tundra, Biome.tundra],
     # cold climate (-5 / 5 degC)
-    ['COLD_DESERT', 'GRASSLAND', 'BOREAL_FOREST', 'BOREAL_FOREST', 'BOREAL_FOREST'],
+    [Biome.cold_desert, Biome.grassland, Biome.boreal_forest, Biome.boreal_forest, Biome.boreal_forest],
     # temperate climate (5 / 15 degC)
-    ['COLD_DESERT', 'GRASSLAND', 'TEMPERATE_FOREST', 'TEMPERATE_FOREST', 'TROPICAL_MONTANE_FOREST'],
+    [Biome.cold_desert, Biome.grassland, Biome.temperate_forest, Biome.temperate_forest, Biome.tropical_mountain_forest],
     # warm climate (15 - 20 degC)
-    ['HOT_DESERT', 'SAVANNA', 'TROPICAL_DRY_FOREST', 'TROPICAL_EVERGREEN_FOREST', 'TROPICAL_EVERGREEN_FOREST'],
+    [Biome.hot_desert, Biome.savanna, Biome.tropical_dry_forest, Biome.tropical_evergreen_forest, Biome.tropical_evergreen_forest],
     # tropical climate (above 20 degC)
-    ['HOT_DESERT', 'THORN_FOREST', 'TROPICAL_DRY_FOREST', 'TROPICAL_EVERGREEN_FOREST', 'TROPICAL_EVERGREEN_FOREST']]
+    [Biome.hot_desert, Biome.thorn_forest, Biome.tropical_dry_forest, Biome.tropical_evergreen_forest, Biome.tropical_evergreen_forest]]
 
 SAND_HEIGHT = 0.12
 GRASS_HEIGHT = 0.16  # 0.315f;
@@ -168,6 +196,7 @@ def find_index(indices, val):
 def rand_float_range(fmin, fmax, random=random):
     return (random.random() + fmin/fmax) * fmax
 
+
 def get_interpolated_float(arr, x, y, width, height):
     wx = clamp(0.0, width-1, x)
     wy = clamp(0.0, height-1, y)
@@ -182,6 +211,7 @@ def get_interpolated_float(arr, x, y, width, height):
     iN = (1.0-dx)*iNW + dx*iNE
     iS = (1.0-dx)*iSW + dx*iSE
     return (1.0-dy)*iN + dy * iS
+
 
 class MapData(object):
     __slots__ = ['slope', 'area', 'flow_dir', 'up_dir', 'in_flags', 'river_id', 'river_length']
@@ -202,7 +232,7 @@ class River(object):
 
 class WorldGenerator(object):
     def __init__(self, width, height, erosion_factor=0.01, max_erosion_alt = 0.9,
-                 sedimentation_factor=0.01, mudslide_coef=0.4):
+                 sedimentation_factor=0.01, mudslide_coef=0.4, seed=None):
         self.width = width
         self.height = height
         self._hm = hm.new(width, height) # World Heightmap
@@ -212,7 +242,7 @@ class WorldGenerator(object):
         self._biome_map = np.zeros((width, height))
         self.cloud_dx, self.cloud_tot_dx = 0.0, 0.0
         self._clouds = np.zeros((width, height))
-        self.random = random.Random() # Random number generator
+        self.random = random.Random(seed) # Random number generator
         self.erosion_factor = erosion_factor
         self.max_erosion_alt = max_erosion_alt
         self.sedimentation_factor = sedimentation_factor
@@ -223,19 +253,23 @@ class WorldGenerator(object):
         self.map_data = np.array(map_data)
         self.map_data.shape = (width, height)
 
-    def generate(self, hill_cnt=6):
+    def generate(self, hill_cnt=600):
         # TODO: Add progress indication/messages.
         print("Building heightmap...")
         self.build_base_map(hill_cnt)
+
         print("Calculating precipitation...")
         self.compute_precipitation()
+
         print("Eroding...")
         self.erode_map()
+
         print("Smoothing...")
         self.smooth_map()
         self.set_land_mass(0.6, SAND_HEIGHT)
+
         print("Generating rivers...")
-        for i in range(round(self.width*self.height/3000)):
+        for i in range(self.width*self.height//3000):
             self.generate_rivers()
         print("Smoothing precipitations...")
         self.smooth_precipitations()
@@ -612,7 +646,28 @@ class WorldGenerator(object):
         hm.normalize(self._precipitation)
 
     def compute_temperatures_and_biomes(self):
-        pass
+        sand_coef = 1.0 / (1.0 - SAND_HEIGHT)
+        water_coef = 1.0 / SAND_HEIGHT
+        for y in range(self.height):
+            lat = (y-self.height/2) * 2 / self.height
+            lat_temp = 0.5*(1.0+math.pow(math.sin(math.pi*(lat+0.5)),5))
+            lat_temp = math.sqrt(lat_temp) if lat_temp > 0.0 else lat_temp
+            lat_temp = -30 + lat_temp*60
+            for x in range(self.width):
+                h0 = self._hm[x, y]
+                h = h0 - SAND_HEIGHT
+                h = (h*water_coef) if h < 0.0 else h*sand_coef
+                alt_shift = h * -35
+                temp = lat_temp + alt_shift
+                self._hm_temperature[x, y] = temp
+                humid = self._precipitation[x, y]
+                climate = self.get_climate_from_temp(temp)
+                i_humid = round(humid * 5)
+                i_humid = min(4, i_humid)
+                self._biome_map[x, y] = biome_diagram[climate][i_humid]
+
+
+
 
     def biome_color(self, biome, x, y):
         r = biome_colors[biome].r

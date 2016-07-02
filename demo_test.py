@@ -6,7 +6,7 @@ from tcod.gameloop import BasicEventLoop
 from tcod.events import KeyPressEvent
 from gui.managers import GuiEventLoop, WindowManager
 from gui.window import Window, ListWindow, Viewport
-from worldgen import WorldGenerator
+from worldgen import WorldGenerator, SAND_HEIGHT
 
 try:
     import IPython.core
@@ -62,9 +62,33 @@ class WorldView(Viewport):
     def __init__(self, **keys):
         super().__init__(**keys)
         self.world_factory = WorldGenerator(self.map_width, self.map_height)
-        self.world_factory.build_base_map(hill_cnt=60)
-        self.elevation = self.world_factory._hm
         self.needs_redraw = True
+
+    @property
+    def elevation(self):
+        return self.world_factory._hm
+
+    def build_world(self, root, hill_cnt=600):
+        root.write(0, 0, "Building heightmap...")
+        root.flush()
+        self.world_factory.build_base_map(hill_cnt)
+        root.write(0, 1, "Calculating precipitation...")
+        root.flush()
+        self.world_factory.compute_precipitation()
+        root.write(0, 2, "Eroding...")
+        self.world_factory.erode_map()
+        root.write(0, 3, "Smoothing...")
+        self.world_factory.smooth_map()
+        self.world_factory.set_land_mass(0.6, SAND_HEIGHT)
+        # root.write(0, 4, "Generating rivers...")
+        # for i in range(round(self.world_factory.width*self.world_factory.height/3000)):
+        #     self.world_factory.generate_rivers()
+        root.write(0, 5, "Smoothing precipitations...")
+        self.world_factory.smooth_precipitations()
+        root.write(0, 6, "Determining temperature and biomes...")
+        self.world_factory.compute_temperatures_and_biomes()
+        root.write(0, 7, "Setting colors...")
+        self.world_factory.compute_colors()
 
     @jit
     def draw_elevations(self, as_color=True):
@@ -100,12 +124,13 @@ class WorldView(Viewport):
                     self.view_tly += 1
 
 class WorldGame(GuiEventLoop):
-    def initialize(self, world_width=200, world_height=200):
+    def initialize(self, world_width=400, world_height=400):
         w, h = self.window_manager.screen_width, self.window_manager.screen_height
         self.world_view = WorldView(tlx=0, tly=0, width=w, height=round(h * 0.8),
                                     map_width=world_width, map_height=world_height,
                                     view_tlx=0, view_tly=0, framed=False,
                                     window_manager=self.window_manager)
+        self.build_world = True
 
     def print_debug_info(self):
         fps = tcod.sys_get_fps()
@@ -116,6 +141,9 @@ class WorldGame(GuiEventLoop):
 
     def step(self, root):
         start = tcod.sys_elapsed_milli()
+        if self.build_world:
+            self.world_view.build_world(root)
+            self.build_world = False
         super().step(root)
         self.world_view.on_update()
         if self.current_key_event.pressed == True and self.current_key_event.vk == tcod.KEY_ESCAPE:
