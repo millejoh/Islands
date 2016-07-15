@@ -545,7 +545,7 @@ class WorldGenerator(object):
                 for y in range(0,self.height):
                     self._clouds[x-cols_to_translate, y] = self._clouds[x,y]
         f = [0,0]
-        for x in range(self.width-cols_to_translate, self.width):
+        for x in range(self.width - cols_to_translate, self.width):
             for y in range(0, self.height):
                 f[0] = 6.0 * (x+self.cloud_tot_dx) / self.width
                 f[1] = 6.0 * y / self.height

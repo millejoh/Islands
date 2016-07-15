@@ -92,6 +92,7 @@ else:
     _lib.TCOD_console_set_char_background = _lib.TCOD_console_set_char_background_wrapper
     _lib.TCOD_console_get_char_foreground = _lib.TCOD_console_get_char_foreground_wrapper
     _lib.TCOD_console_set_char_foreground = _lib.TCOD_console_set_char_foreground_wrapper
+    _lib.TCOD_console_put_char_ex = _lib.TCOD_console_put_char_ex_wrapper
     _lib.TCOD_console_get_fading_color = _lib.TCOD_console_get_fading_color_wrapper
     _lib.TCOD_image_get_pixel = _lib.TCOD_image_get_pixel_wrapper
     _lib.TCOD_image_put_pixel = _lib.TCOD_image_put_pixel_wrapper

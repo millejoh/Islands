@@ -5,6 +5,7 @@ import numpy as np
 import tcod
 import color as color
 from tcod.string import make_colored_string
+from .gameclock import GameClock
 
 
 def sys_get_events():
@@ -128,7 +129,7 @@ class Console(object):
             background = self.get_char_background(x, y)
         else:
             symbol = cell[0]
-            foreground = cell[2]
+            foreground = cell[1]
             background = self.get_char_background(x, y)
 
         if background is None:
@@ -137,9 +138,10 @@ class Console(object):
         if foreground is None:
             foreground = self.get_char_foreground(x, y)
 
-        tcod.console_set_char_background(self._c, x, y, background)
-        tcod.console_set_char_foreground(self._c, x, y, foreground)
-        tcod.console_put_char(self._c, x, y, symbol)
+        # tcod.console_set_char_background(self._c, x, y, background)
+        # tcod.console_set_char_foreground(self._c, x, y, foreground)
+        # tcod.console_put_char(self._c, x, y, symbol)
+        tcod.console_put_char_ex(self._c, x, y, symbol, foreground, background)
 
     @property
     def keyboard_repeat(self):
@@ -392,6 +394,8 @@ class RootConsole(Thread, Console):
         self.end_game = False
         self.max_fps = max_fps
         self.default_background_color = background
+        self.clock = GameClock()
+        self.clock.frame_callback = self.on_draw
 
     def flush(self):
         tcod.console_flush()
@@ -407,13 +411,37 @@ class RootConsole(Thread, Console):
             tcod.console_credits()
         tcod.sys_set_fps(self.max_fps)
 
-    def run(self, gameloop_manager):
-        while (not self.end_game) and (not tcod.console_is_window_closed()):
-            # events = sys_get_events()
-            # self.handle_keys(key)
-            tcod.console_clear(tcod.root_console)
-            gameloop_manager.step(self)
-            tcod.console_flush()
+    def draw(self):
+        self.write(1, 2, "No draw method defined, using default method.")
+        self.write(1, 3, "Time elapsed = {0}".format(tcod.sys_elapsed_milli()))
+        self.write(1, 4, "FPS = {0}".format(tcod.sys_get_fps()))
 
+    def on_draw(self, dt):
+        tcod.console_clear(tcod.root_console)
+        self.draw()
+        tcod.console_flush()
+
+    def run(self):
+        while (not self.end_game) and (not tcod.console_is_window_closed()):
+            events = sys_get_events()
+            self.clock.tick()
 
 R = RootConsole
+
+class InteractiveRootConsole(RootConsole):
+    def __init__(self, kernel, *args, **keys):
+        self.kernel = kernel
+        self.custom_draw_method = None
+        super().__init__(*args, **keys)
+
+    def draw(self):
+        if self.custom_draw_method:
+            self.custom_draw_method(self)
+        else:
+            super().draw()
+
+    def run(self):
+        while (not self.end_game) and (not tcod.console_is_window_closed()):
+            events = sys_get_events()
+            self.clock.tick()
+            self.kernel.do_one_iteration()

@@ -10,7 +10,6 @@ from worldgen import WorldGenerator, SAND_HEIGHT
 
 try:
     import IPython.core
-
     ipython_enabled = True
 except ImportError:
     ipython_enabled = False

@@ -197,7 +197,6 @@ How entities and actor interact with each other and the world.
 Implemented as events and finite state machines.
 ** Defining entities through org-mode
 
-
 * Modeling the worlds
 Model the flow of currency (money/productivity)? Agents/citizens are sources,
 but what would be the sinks? Banks, commodity and stock exchanges are nodes?
