@@ -165,6 +165,7 @@ on contents on an numpy array object.
 
 For prototyping use simple 2D geometric shapes with color (and in some
 cases, maybe textures) to draw everything.
+
 ** Objects/Props/Entities
 Props as in stage props. Have properties and physical presence in world, but otherwise do
 not actively participate in game loop like agents do.
@@ -196,7 +197,48 @@ How entities and actor interact with each other and the world.
 
 Implemented as events and finite state machines.
 ** Defining entities through org-mode
+** Polygonal Map Generation
 
-* Modeling the worlds
+Currently [[file:worldgen.py::class%20WorldGenerator(object):][worldgen.py]] makes heavy use of Perlin noise to generate heightmaps and
+climate, etc for the world. Another way of doing this is to generate a [[http://www-cs-students.stanford.edu/~amitp/game-programming/polygon-map-generation/][polygonal
+tiling]] using voronoi diagrams.
+
+Amit's [[https://github.com/amitp/mapgen2][code]] uses Actionscript, and is based on another Actionscript [[http://nodename.github.io/as3delaunay/][library]] that
+does voronoi/delauny calculations.
+
+In the world of Python it appears that [[http://docs.scipy.org/doc/scipy-0.14.0/reference/tutorial/spatial.html][SciPy]] and [[https://github.com/materialsvirtuallab/pyhull][pyhull]] both provide
+implementations of the algorithms Amit is using for map generation. They seem to
+currently be roughly equivalent in terms of performance. SciPy includes many
+pots and pans, so probably is not as pragmatic a choice for inclusion in a game
+engine. Note, though, that current SciPy (version > 12) uses qhull to implement
+the Voronoi tesselation algorithm.
+
+Let's look at some examples using pyhull and SciPy:
+
+#+BEGIN_SRC ipython :session t
+  from pyhull.convex_hull import ConvexHull
+  pts = [[-0.5, -0.5], [-0.5, 0.5], [0.5, -0.5], [0.5, 0.5], [0,0]]
+  hull = ConvexHull(pts)
+
+
+  from pyhull.delaunay import DelaunayTri
+  tri = DelaunayTri(pts)
+
+  from pyhull.voronoi import VoronoiTess
+  v = VoronoiTess(pts)
+#+END_SRC
+
+#+BEGIN_SRC ipython :session t
+  from scipy.spatial import Voronoi
+  vor = Voronoi(points)
+  vor.vertices
+#+END_SRC
+
+Okay, ob-ipython not working in my Linux setup (prolly 'cause ob-ipython and
+conda do not play well together) so have moved the code over to an actual [[ipynb:(:url-or-port%208888%20:name%20"Islands/Polygonal%20Map%20Generation.ipynb")][notebook]].
+* Modeling the world
 Model the flow of currency (money/productivity)? Agents/citizens are sources,
 but what would be the sinks? Banks, commodity and stock exchanges are nodes?
+
+* References
+- Never forget about Amit's [[http://www.redblobgames.com/][Red Blob Games]].
