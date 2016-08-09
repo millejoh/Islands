@@ -1,7 +1,8 @@
+import tdl, tcod
+import pdb
+from gameclock import GameClock
 from ipykernel.eventloops import register_integration
 from tdl.event import App, get
-import tdl, tcod
-from gameclock import GameClock
 
 root = None
 
@@ -9,7 +10,7 @@ class InteractiveApp(App):
     def __init__(self, kernel):
         self.kernel = kernel
         self.clock = GameClock()
-        self.clock.frame_callback = self.update
+        self.clock.frame_callback = self.my_update
 
     def init_root(self, width=80, height=26, show_credits=False):
         self.root = tdl.init(width, height)
@@ -26,12 +27,12 @@ class InteractiveApp(App):
         self.root.drawStr(1, 3, "Time elapsed = {0}".format(tcod.sys_elapsed_milli()))
         self.root.drawStr(1, 4, "FPS = {0}".format(tcod.sys_get_fps()))
 
-    def update(self, dt):
+    def my_update(self, dt):
         self.root.clear()
         self.draw()
         tdl.flush()
 
-    def run_once(self):
+    def runOnce(self):
         """Pump events to this App instance and then return.
 
         This works in the way described in L{App.run} except it immediately
@@ -40,6 +41,8 @@ class InteractiveApp(App):
         Having multiple L{App} instances and selectively calling runOnce on
         them is a decent way to create a state machine.
         """
+        self.kernel.do_one_iteration()
+        self.clock.tick()
         for event in get():
             if event.type:  # exclude custom events with a blank type variable
                 # call the ev_* methods
@@ -51,13 +54,11 @@ class InteractiveApp(App):
                 if hasattr(self, method):  # silently exclude undefined methods
                     getattr(self, method)(event)
 
-        self.clock.tick()
-        self.kernel.do_one_iteration()
 
 
 @register_integration('tcod_gui')
 def init_interactive_root(kernel):
     global root
     root = InteractiveApp(kernel)
-    root.init_root(show_credits=True)
+    root.init_root(show_credits=False)
     root.run()
