@@ -236,9 +236,24 @@ Let's look at some examples using pyhull and SciPy:
 
 Okay, ob-ipython not working in my Linux setup (prolly 'cause ob-ipython and
 conda do not play well together) so have moved the code over to an actual [[ipynb:(:url-or-port%208888%20:name%20"Islands/Polygonal%20Map%20Generation.ipynb")][notebook]].
+
+My biggest stumbling block in this method was how to deal with inifinite Voronoi
+vertices (i.e. off the edge of the map) when doing the relax step. Turns at the
+solution is ridiculously simply - just ignore these points. The results are
+still asthetically pleasing.
+
+Another lesson learned is that being able to visualize the steps via matplotlib
+provides immediate and useful feedback into the efficacy of a given method.
+
+Still need data structures to represent information about the map. Use the PAN/REN
+[[http://www.voronoi.com/wiki/index.php?title=PAN_graphs][terminology]]?
+
 * Modeling the world
 Model the flow of currency (money/productivity)? Agents/citizens are sources,
 but what would be the sinks? Banks, commodity and stock exchanges are nodes?
 
 * References
 - Never forget about Amit's [[http://www.redblobgames.com/][Red Blob Games]].
+- [[http://networkx.readthedocs.io/en/networkx-1.11/tutorial/tutorial.html][NetworkX]] library for working with graphs.
+- [[https://github.com/tyarkoni/transitions][Transitions]] library for finit state machines.
+- [[https://github.com/hynek/attrs][attrs]] - Python attributes without boilerplate.

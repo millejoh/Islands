@@ -1,5 +1,8 @@
+attrs
 numpy
 colormath
 colour
-pyglet
+transitions
+networkx
+#pyglet
 #pymunk
