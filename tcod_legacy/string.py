@@ -4,7 +4,7 @@
 import re
 from collections import namedtuple
 
-import tcod
+import tcod_legacy as tcod
 from color import decompose_color, string_to_colornum
 
 

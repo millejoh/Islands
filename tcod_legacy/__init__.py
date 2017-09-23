@@ -26,7 +26,7 @@ import os, os.path
 os.environ['PATH'] = os.path.dirname(os.path.abspath(__file__)) + ';' + os.environ['PATH']
 #print('PATH = ', os.environ['PATH'])
 
-from tcod.libtcodpy_x64 import *
+from tcod_legacy.libtcodpy_x64 import *
 
 
 root_console = 0 # This means NULL for you C folk.
@@ -34,6 +34,6 @@ default_font = os.path.join(os.path.dirname(os.path.abspath(__file__)), os.path.
 
 key_dispatch_table = {}
 
-import tcod.console as console
+import tcod_legacy.console as console
 
 __all__ = ['console', 'string', 'libtcodpy']

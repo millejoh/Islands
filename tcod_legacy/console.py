@@ -2,9 +2,9 @@ import os.path
 from threading import Thread
 from collections import namedtuple
 import numpy as np
-import tcod
+import tcod_legacy as tcod
 import color as color
-from tcod.string import make_colored_string
+from tcod_legacy.string import make_colored_string
 from .gameclock import GameClock
 
 

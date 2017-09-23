@@ -13,6 +13,7 @@ from enum import Enum
 noise1d = tcod.noise_new(1) # noise.NoiseGenerator(1)
 noise2d = tcod.noise_new(2) # noise.NoiseGenerator(2)
 
+math.pi
 
 # Height and Biome Constants
 # --------------------------

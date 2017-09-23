@@ -1,20 +1,26 @@
 import tdl, tcod
 import pdb
+import attr
+import numpy as np
 from gameclock import GameClock
-from ipykernel.eventloops import register_integration
 from tdl.event import App, get
+from MapChunk import PolygonMap
+from uuid import uuid4
 
 root = None
+
+def unique_name(prefix):
+    return '{}-{}'.format(prefix, uuid4().int)
 
 class InteractiveApp(App):
     def __init__(self, kernel):
         self.kernel = kernel
         self.clock = GameClock()
-        self.clock.frame_callback = self.my_update
+        self.clock.frame_callback = self.frame_update
 
     def init_root(self, width=80, height=26, show_credits=False):
         self.root = tdl.init(width, height)
-        self.scratch = tdl.Console(width, height)
+        self.canvas = tdl.Console(width, height)
         self.temp_console = tdl.Console(width, height)
         self.width, self.height = width, height
         tdl.set_fps(30)
@@ -23,11 +29,9 @@ class InteractiveApp(App):
             # tcod.sys_set_fps(self.max_fps)
 
     def draw(self):
-        self.root.drawStr(1, 2, "No draw method defined, using default method.")
-        self.root.drawStr(1, 3, "Time elapsed = {0}".format(tcod.sys_elapsed_milli()))
-        self.root.drawStr(1, 4, "FPS = {0}".format(tcod.sys_get_fps()))
+        self.root.blit(self.canvas)
 
-    def my_update(self, dt):
+    def frame_update(self, dt):
         self.root.clear()
         self.draw()
         tdl.flush()
@@ -41,7 +45,8 @@ class InteractiveApp(App):
         Having multiple L{App} instances and selectively calling runOnce on
         them is a decent way to create a state machine.
         """
-        self.kernel.do_one_iteration()
+        if self.kernel:
+            self.kernel.do_one_iteration()
         self.clock.tick()
         for event in get():
             if event.type:  # exclude custom events with a blank type variable
@@ -54,11 +59,48 @@ class InteractiveApp(App):
                 if hasattr(self, method):  # silently exclude undefined methods
                     getattr(self, method)(event)
 
+class GameApp(InteractiveApp):
+    def init_root(self, manager, *args, **kwargs):
+        super().init_root(*args, **kwargs)
+        self.game_manager = manager
+        self.game_manager.world_canvas = self.canvas
+
+    def draw(self):
+        self.game_manager.on_draw()
+        super().draw()
+
+class WorldState(object):
+    def __init__(self, width, height, feature_cnt=None, canvas=None):
+        fcnt = int(feature_cnt or (width*height)/10)
+        self._dims = (width, height)
+        self.wmap = PolygonMap(*self._dims, fcnt)
+        self.world_canvas = canvas
+        self.actors = {}
+
+    def redraw_chunk(self):
+        self.canvas.clear()
+        self.draw_terrain()
+        self.draw_features()
+        self.draw_actors()
+
+    def on_draw(self):
+        # Determine what's changed, and only draw that.
+        # Implement special effects here?
+        pass
+
+    def draw_terrain(self):
+        hn = self.wmap.terrain_to_hm('elevation')
+        amin, max = hn.get_minmax()
+        for i in range(hn.width):
+            for j in range(hn.height):
+                color = tcod.color_lerp(tcod.dark_blue, tcod.white, hn[i,j]/max)
+                self.world_canvas.draw_char(i, j, ' ', fg=tcod.white, bg=color)
+
+    def draw_features(self):
+        pass
+
+    def draw_actors(self):
+        for _, actor in self.actors.items():
+            actor.draw(self.world_canvas)
 
 
-@register_integration('tcod_gui')
-def init_interactive_root(kernel):
-    global root
-    root = InteractiveApp(kernel)
-    root.init_root(show_credits=False)
-    root.run()

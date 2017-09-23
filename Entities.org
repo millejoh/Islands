@@ -1,3 +1,33 @@
+
+* Design
+  Operations:
+
+   - Adding
+   - Deleting
+   - Searching
+   - iterating
+
+  #+BEGIN_SRC ein :session http://localhost:8889/Islands/Interactive Consoles.ipynb
+    import networkx as nx
+    from uuid import uuid4
+
+    class EntityManager(object):
+        def __init__(self):
+            self._entities = nx.Graph()
+            self._eclasses = nx.Graph()
+
+        def register_eclass(name):
+            return self._eclasses.add_node(name)
+
+        def add_entity(self, name, eclass='object', short_desc="", long_desc=""):
+            id = uuid4()
+            self._eclasses.add_node(id)
+            self._eclasses.add_edge(eclass, id)
+            return self._entities.add_node(id, name=name)
+  #+END_SRC
+
+  #+RESULTS:
+
 * Tree
   :PROPERTIES:
   :x:        0
