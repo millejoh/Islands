@@ -7,9 +7,9 @@ from collections import namedtuple
 from math import floor
 
 import tcod
-import tcod.console as tc
+import gui.console as tc
 import gui.utils as utils
-from tcod.events import *
+from gui.events import *
 
 
 class Window(tc.Console):

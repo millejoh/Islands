@@ -1,6 +1,5 @@
 import tcod
 
-
 class Event(object):
     def __init__(self, window=None, winx=0, winy=0):
         self.window = window

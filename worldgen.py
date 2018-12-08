@@ -47,7 +47,9 @@ class Biome(Enum):
     tropical_dry_forest = 17
     tropical_evergreen_forest = 18
     thorn_forest = 19
- 
+    tropical_rain_forest = 20
+    temperate_forest = 21
+
 biome_colors = {Biome.snow: Color(248, 248, 248),
                 Biome.tundra: Color(221, 221, 187),
                 Biome.bare: Color(187, 187, 187),
@@ -237,10 +239,10 @@ class WorldGenerator(object):
                  sedimentation_factor=0.01, mudslide_coef=0.4, seed=None):
         self.width = width
         self.height = height
-        self._hm = hm.new(width, height) # World Heightmap
-        self._hm2 = hm.new(width, height) # World map without erosion
-        self._precipitation = hm.new(width, height)
-        self._hm_temperature = hm.new(width, height)
+        self._hm = hm.Heightmap(width, height) # World Heightmap
+        self._hm2 = hm.Heightmap(width, height) # World map without erosion
+        self._precipitation = hm.Heightmap(width, height)
+        self._hm_temperature = hm.Heightmap(width, height)
         self._biome_map = np.zeros((width, height))
         self.cloud_dx, self.cloud_tot_dx = 0.0, 0.0
         self._clouds = np.zeros((width, height))
@@ -319,7 +321,7 @@ class WorldGenerator(object):
             radius = self.random.randrange(round(min_radius), round(max_radius))
             xh = self.random.randrange(0, self.width)
             yh = self.random.randrange(0, self.height)
-            hm.add_hill(self._hm, xh, yh, radius, height)
+            self._hm.add_hill(xh, yh, radius, height)
 
     def set_land_mass(self, land_mass, water_level):
         "Ensure that a proportion <land_mass | [0,1]> of the map is above sea level."
@@ -333,7 +335,7 @@ class WorldGenerator(object):
                 ih = clamp(0, 255, ih)
                 heightcount[ih] += 1
         tcnt = 0
-        i = 0 
+        i = 0
         while tcnt < (self.width * self.height * (1.0 - land_mass)):
             tcnt += heightcount[i]
             i += 1
@@ -352,9 +354,9 @@ class WorldGenerator(object):
 
     def build_base_map(self, hill_cnt=60):
         self.add_land(hill_cnt, 16 * self.width / 200, 0.7, 0.6)
-        self._hm = hm.normalize(self._hm)
-        hm.add_fbm(self._hm, noise2d, 2.20 * self.width / 400, 2.2 * self.width / 400, 0, 0, 10, 1.0, 2.05)
-        self._hm = hm.normalize(self._hm)
+        self._hm.normalize()
+        self._hm.add_fbm(noise2d, 2.20 * self.width / 400, 2.2 * self.width / 400, 0, 0, 10, 1.0, 2.05)
+        self._hm.normalize()
         self._hm2 = self._hm.copy()
         self.set_land_mass(0.6, SAND_HEIGHT)
         # Fix land/mountain ratio using x^3 curve above sea level
@@ -460,7 +462,7 @@ class WorldGenerator(object):
                  self._precipitation[x, y] = v
 
     def erode_map(self):
-        new_map = hm.new(self.width, self.height)
+        new_map = hm.Heightmap(self.width, self.height)
         # Compute flow and slope maps
         for i in range(5, 1, -1):
             for y in range(self.height):

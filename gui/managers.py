@@ -2,9 +2,9 @@ __author__ = 'millejoh'
 
 import tcod
 import gui.window
-from tcod.console import RootConsole
-from tcod.gameloop import BasicEventLoop
-from tcod.events import *
+from gui.console import RootConsole, default_font
+from gui.gameloop import BasicEventLoop
+from gui.events import *
 from gui.utils import translate_negative_coords, transparency_to_fade
 
 try:
@@ -15,7 +15,7 @@ except ImportError:
 
 class WindowManager(object):
     def __init__(self, screen_width, screen_height, auto_redraw=True, opaque=1, invisible=0, dimmed=75, bold_factor=1.4,
-                 focus_fade_mode='together', font=tcod.default_font,
+                 focus_fade_mode='together', font=default_font,
                  font_flags=tcod.FONT_LAYOUT_TCOD|tcod.FONT_TYPE_GREYSCALE,
                  font_width=0, font_height=0):
         """

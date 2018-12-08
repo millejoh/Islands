@@ -3,7 +3,8 @@ import numpy as np
 import networkx as nx
 import attr
 import esper
-import tcod
+#import tcod # Replace with bearlibterminal colors
+from bearlibterminal.terminal import color_from_argb, color_from_name
 from uuid import uuid1, uuid4
 from scipy.spatial import Voronoi, voronoi_plot_2d, KDTree
 
@@ -14,19 +15,19 @@ biomes = [['SNOW', 'SNOW', 'SNOW', 'TUNDRA', 'BARE', 'SCORCHED'],
           ['TROPICAL_RAIN_FOREST', 'TROPICAL_RAIN_FOREST', 'TROPICAL_SEASONAL_FOREST', 'TROPICAL_SEASONAL_FOREST',
            'GRASSLAND', 'SUBTROPICAL_DESERT']]
 
-biome_colors = {'SNOW': tcod.Color(248, 248, 248),
-                'TUNDRA': tcod.Color(221, 221, 187),
-                'BARE': tcod.Color(187, 187, 187),
-                'SCORCHED': tcod.Color(153, 153, 153),
-                'TAIGA': tcod.Color(204, 212, 187),
-                'SHRUBLAND': tcod.Color(194, 204, 187),
-                'GRASSLAND': tcod.Color(192, 212, 170),
-                'TEMPERATE_DESERT': tcod.Color(228, 232, 202),
-                'TEMPERATE_RAIN_FOREST': tcod.Color(164, 196, 168),
-                'TEMPERATE_DECIDUOUS_FOREST': tcod.Color(180, 201, 169),
-                'TROPICAL_RAIN_FOREST': tcod.Color(156, 187, 169),
-                'TROPICAL_SEASONAL_FOREST': tcod.Color(169, 204, 164),
-                'SUBTROPICAL_DESERT': tcod.Color(233, 221, 199)}
+biome_colors = {'SNOW': color_from_argb(255,248, 248, 248),
+                'TUNDRA': color_from_argb(255,221, 221, 187),
+                'BARE': color_from_argb(255,187, 187, 187),
+                'SCORCHED': color_from_argb(255,153, 153, 153),
+                'TAIGA': color_from_argb(255,204, 212, 187),
+                'SHRUBLAND': color_from_argb(255,194, 204, 187),
+                'GRASSLAND': color_from_argb(255,192, 212, 170),
+                'TEMPERATE_DESERT': color_from_argb(255,228, 232, 202),
+                'TEMPERATE_RAIN_FOREST': color_from_argb(255,164, 196, 168),
+                'TEMPERATE_DECIDUOUS_FOREST': color_from_argb(255,180, 201, 169),
+                'TROPICAL_RAIN_FOREST': color_from_argb(255,156, 187, 169),
+                'TROPICAL_SEASONAL_FOREST': color_from_argb(255,169, 204, 164),
+                'SUBTROPICAL_DESERT': color_from_argb(255,233, 221, 199)}
 
 
 def relax(pts, n=2):
@@ -175,7 +176,7 @@ class MapDisplay(object):
 @attr.s
 class Display(object):
     glyph = attr.ib(default = ' ')
-    color = attr.ib(default = tcod.white)
+    color = attr.ib(default = color_from_name('white'))
     pos = attr.ib(default = np.zeros(3))
     opos = attr.ib(default=np.zeros(3))
 

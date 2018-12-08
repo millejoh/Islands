@@ -101,9 +101,10 @@ class Heightmap(object):
         for i in range(self.width):
             for j in range(self.height):
                 self[i, j] = -self[i, j]
+        return self
 
-    def __array__(self ,*args):
-        return np.array(list(iter(self)), *args).reshape([self.width, self.height])
+    # def __array__(self ,*args):
+    #     return np.array(list(iter(self)), *args).reshape([self.width, self.height])
 
     def normalize(self, min=0.0, max=1.0):
         tcod.heightmap_normalize(self._data, min, max)

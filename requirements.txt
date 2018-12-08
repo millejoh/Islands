@@ -4,7 +4,9 @@ colormath
 colour
 transitions
 networkx
-python-tdl
-libtcod-cffi
+clubsandwich
+pymc3
+# python-tdl
+# libtcod-cffi
 #pyglet
 #pymunk

@@ -1,7 +1,3 @@
-__author__ = 'millejoh'
-
-#!/usr/bin/env python
-
 __version__ = '$Id: gameclock.py 294 2011-05-12 03:55:32Z$'
 __author__ = 'Gummbum, (c) 2011'
 

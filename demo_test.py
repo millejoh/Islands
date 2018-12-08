@@ -1,9 +1,10 @@
 __author__ = 'millejoh'
 
-import tcod, tcod.events
+import tcod
+import gui.events
 from numba import jit
-from tcod.gameloop import BasicEventLoop
-from tcod.events import KeyPressEvent
+from gui.gameloop import BasicEventLoop
+from gui.events import KeyPressEvent
 from gui.managers import GuiEventLoop, WindowManager
 from gui.window import Window, ListWindow, Viewport
 from worldgen import WorldGenerator, SAND_HEIGHT

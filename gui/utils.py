@@ -3,10 +3,10 @@ A refactoring of non-class definitions from the gui module.
 """
 
 import tcod
-import tcod.console as tc
+import gui.console as tc
 import gui
-from tcod.events import MouseEvent, MouseDragEvent, MouseMoveEvent, MouseReleaseEvent, MousePressEvent, KeyEvent
-from tcod.gameloop import BasicEventLoop
+from gui.events import MouseEvent, MouseDragEvent, MouseMoveEvent, MouseReleaseEvent, MousePressEvent, KeyEvent
+from gui.gameloop import BasicEventLoop
 
 def clamp(low, high, expr):
     """Return the numeric value of EXPR, constrained to the range
