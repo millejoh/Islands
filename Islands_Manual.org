@@ -1,0 +1,651 @@
+#+TITLE: The Islands Design Manual
+#+STARTUP: indent
+
+
+
+* Bearlib + cl-dormouse?
+
+[[https://bitbucket.org/eeeickythump/cl-dormouse][cl-dormouse]] is GUI library for libtcod, written in CL.
+
+You are thinking clubsandwich, I think.
+
+* TCOD Python Wrapper
+** ConsoleBuffer: Fast Console/Window Drawing
+Want to treat TCOD console as numpy array:
+
+#+BEGIN_SRC ipython :session
+  import tcod.console
+
+  c = tcod.console(80,80)
+  c.foreground[10, 10]
+  c.background[0,0]
+  c.char[5, 5]
+  c.flush()
+#+END_SRC
+
+samples_py uses a meshgrid and three 1-D arrays for R, G, B components. Would be
+more readable if there was a better way than:
+
+#+BEGIN_SRC ipython :session
+  c.background_r[0,0] = red
+  c.background_g[0,0] = green
+  c.background_b[0,0] = blue
+#+END_SRC
+
+Thankfully numpy is truly awesome. Check this out:
+
+#+BEGIN_SRC ipython :session
+  a = np.zeros((10,10,3))
+  # Slow!
+  a[0,0] = tcod.blue
+  # Fast!
+  a[0,0,0] = tcod.blue.r
+  a[0,0,1] = tcod.blue.g
+  a[0,0,2] = tcod.blue.b
+
+  a[..., 2].ravel('F')
+#+END_SRC
+
+The second call works as expected, while the last call returns a 1-D array of
+all the blue component values. Note that this is really slow since numpy has to
+figure out types and do conversions. Much faster to explicitly assign the RGB
+components. Also tcod seems to do array indexing by column-major format (I think
+this is so that (x y) references match user expectations more closely), so the call
+to ravel is adjusted accordingly.
+
+Maybe what I want is the slow, pokey, but general Console class with a
+FillConsole (or other suitably named) subclass that implements the Numpy array
+details. Implementing something similar to [[file:tcod/libtcodpy.py::class%20ConsoleBuffer:][ConsoleBuffer]], except with numpy
+arrays, seems smart.
+
+** CL-Dormouse Port
+
+Windowing/GUI system built on tcod. This is the Islands.gui module.
+Islands.tcod is a slightly more pythonic wrapper around libtcodpy.
+
+*** Classes
+* Architecture
+:PROPERTIES:
+:ID:       413df898-c646-4f36-b115-cede7d660fb1
+:END:
+
+Imports:
+
+#+NAME: 49d6257c-8f2c-4e96-b0e0-c1581b8fdae1
+#+BEGIN_SRC ein :session 8888/Islands.ipynb :tangle ../Islands/main.py
+  from bearlibterminal import terminal
+  from clubsandwich.blt.state import blt_state
+  from clubsandwich.director import DirectorLoop, Scene
+  from clubsandwich.geom import Rect, Point, Size
+  from clubsandwich.ui import (
+      RectView,
+      LabelView,
+      ButtonView,
+      FirstResponderContainerView,
+      WindowView,
+      SettingsListView,
+      LayoutOptions,
+      UIScene,
+      CyclingButtonView,
+      SingleLineTextInputView,
+      IntStepperView,
+      View,
+  )
+
+  RectView()
+#+END_SRC
+
+#+RESULTS: 49d6257c-8f2c-4e96-b0e0-c1581b8fdae1
+: 
+ModuleNotFoundErrorTraceback (most recent call last)
+<ipython-input-2-662f2bce136a> in <module>
+----> 1 from bearlibterminal import terminal
+      2 from clubsandwich.blt.state import blt_state
+      3 from clubsandwich.director import DirectorLoop, Scene
+      4 from clubsandwich.geom import Rect, Point, Size
+      5 from clubsandwich.ui import (
+
+ModuleNotFoundError: No module named 'bearlibterminal'
+
+
+
+** UI
+Using clubsandwich.
+
+*** Main Menu Scene
+
+#+NAME: f9d6cdc0-aa44-4347-b9cb-9bfaf814a764
+#+BEGIN_SRC ein :session 8888/Islands/Islands.ipynb :tangle ../Islands/main.py
+  LOGO = """
+    _______     __     ____             __       _     __
+   / ___/ /_ __/ /    / __/__ ____  ___/ /    __(_)___/ /
+  / /__/ / // / _ \  _\ \/ _ `/ _ \/ _  / |/|/ / / __/ _ \\
+  \___/_/\_,_/_.__/ /___/\_,_/_//_/\_,_/|__,__/_/\__/_//_/
+  """
+
+
+  class MainMenuScene(UIScene):
+      def __init__(self, *args, **kwargs):
+          views = [
+              LabelView(
+                  LOGO[1:].rstrip(),
+                  layout_options=LayoutOptions.row_top(0.5)),
+              LabelView(
+                  "Try resizing the window!",
+                  layout_options=LayoutOptions.centered('intrinsic', 'intrinsic')),
+              ButtonView(
+                  text="Play", 
+                  callback=self.play,
+                  color_bg='#000000', color_fg='#00ff00',
+                  layout_options=LayoutOptions.row_bottom(4).with_updates(
+                      left=0.2, width=0.2, right=None)),
+              ButtonView(
+                  text="Settings", callback=self.show_settings,
+                  layout_options=LayoutOptions.row_bottom(4).with_updates(
+                      left=0.4, width=0.2, right=None)),
+              ButtonView(
+                  text="[color=red]Quit",
+                  callback=lambda: self.director.pop_scene(),
+                  size=Size(4, 1),  # [color=red] messes up auto size calculations
+                  layout_options=LayoutOptions.row_bottom(4).with_updates(
+                      left=0.6, width=0.2, right=None)),
+          ]
+          super().__init__(views, *args, **kwargs)
+
+      def become_active(self):
+          self.ctx.clear()
+
+      def play(self):
+          # self.director.push_scene(CharacterCreationScene())
+          self.director.push_scene(GameScene())
+
+      def show_settings(self):
+          self.director.push_scene(SettingsScene())
+
+#+END_SRC
+
+#+RESULTS: f9d6cdc0-aa44-4347-b9cb-9bfaf814a764
+: 
+
+*** Character Creation
+
+#+NAME: e2bd4e22-6077-498f-9a5a-ae4fb15ff29e
+#+BEGIN_SRC ein :session 8888/Islands/Islands.ipynb :tangle ../Islands/main.py
+class CharacterCreationScene(UIScene):
+    def __init__(self, *args, **kwargs):
+        view = WindowView(
+            'Character',
+            layout_options=LayoutOptions(top=7, right=10, bottom=7, left=10),
+            subviews=[
+                LabelView('Name:', layout_options=LayoutOptions(height=1, top=1, bottom=None)),
+                SingleLineTextInputView(
+                    callback=self.print_name,
+                    layout_options=LayoutOptions
+                        .centered('intrinsic', 'intrinsic')
+                        .with_updates(top=2, bottom=None)),
+                LabelView('Strength:', layout_options=LayoutOptions(height=1, top=4, bottom=None)),
+                IntStepperView(
+                    value=10, min_value=1, max_value=20, callback=lambda x: print(x),
+                    layout_options=LayoutOptions
+                        .centered('intrinsic', 'intrinsic')
+                        .with_updates(top=5)),
+                ButtonView(
+                    text='Cancel', callback=lambda: self.director.pop_scene(),
+                    layout_options=LayoutOptions.row_bottom(3)),
+            ]
+        )
+        super().__init__(view, *args, **kwargs)
+
+        self.covers_screen = True
+
+    def print_name(self, text):
+        print("Your name is:", text)
+
+#+END_SRC
+
+#+RESULTS: e2bd4e22-6077-498f-9a5a-ae4fb15ff29e
+: 
+
+#+RESULTS:
+
+*** Settings
+
+#+NAME: c63ccfae-99cc-4246-b350-f0432fb65072
+#+BEGIN_SRC ein :session 8888/Islands/Islands.ipynb :tangle ../Islands/main.py
+  class SettingsScene(UIScene):
+      OPTIONS = {
+          'Difficulty': ["I'm too young to die", "Hey, not too rough", "Hurt me plenty", "Ultra-Violence", "Nightmare!"],
+          'Advanced water effects': ['True', 'False'],
+          'Sound level (out of 10)': ['Off', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10'],
+          'Music level (out of 10)': ['Off', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10'],
+          'Permadeath': ['True', 'False'],
+          'FXAA': ['True', 'False'],
+          'Shadow quality': ['No shadows', 'I have a potato', 'Medium', 'High', 'Ridiculous'],
+          'Realtime': ['True', 'False'],
+          'Send system analytics to Facebook': ['True', 'False'],
+          'Burn extra CPU just for fun': ['True', 'False'],
+          'Include EMACS implementation': ['True', 'False'],
+          'Include LISP implementation': ['True', 'False'],
+          'Include email client implementation': ['True', 'False'],
+      }
+
+      def __init__(self, *args, **kwargs):
+          view = WindowView(
+              'Settings',
+              layout_options=LayoutOptions.centered(60, 20),
+              subviews=[
+                  SettingsListView(
+                      [
+                          (k, CyclingButtonView(v, v[0], callback=lambda _: None, align_horz='left'))
+                          for k, v in sorted(SettingsScene.OPTIONS.items())
+                      ],
+                      value_column_width=20,
+                      layout_options=LayoutOptions(bottom=5)),
+                  ButtonView(
+                      text='Apply', callback=self.apply,
+                      layout_options=LayoutOptions.row_bottom(5).with_updates(right=0.5)),
+                  ButtonView(
+                      text='Cancel', callback=lambda: self.director.pop_scene(),
+                      layout_options=LayoutOptions.row_bottom(5).with_updates(left=0.5)),
+              ])
+          super().__init__(view, *args, **kwargs)
+
+          # this lets the main screen show underneath
+          self.covers_screen = False
+
+      def apply(self):
+          print("Your choices are meaningless.")
+          self.director.pop_scene()
+
+#+END_SRC
+
+#+RESULTS: c63ccfae-99cc-4246-b350-f0432fb65072
+: 
+
+#+RESULTS:
+
+*** Game Scene
+
+#+NAME: c10b571e-2670-45ff-a133-2e290c05a815
+#+BEGIN_SRC ein :session 8888/Islands/Islands.ipynb :tangle ../Islands/main.py
+  class GameScene(UIScene):
+      def __init__(self, *args, **kwargs):
+          self.main_display = MainDisplay(layout_options=LayoutOptions(left=0.2))
+          self.side_info_bar = InfoBar(layout_options=LayoutOptions.column_left(width=0.2))
+          views = [
+              self.main_display,
+              self.side_info_bar
+          ]
+          super().__init__(views, *args, **kwargs)
+
+      def become_active(self):
+          self.ctx.clear()
+
+      def terminal_read(self, val):
+          super().terminal_read(val)
+          if val == 'q' or val =='Q':
+              self.director.pop_scene()
+
+#+END_SRC
+
+#+RESULTS: c10b571e-2670-45ff-a133-2e290c05a815
+: 
+
+**** Side Info Bar
+
+#+NAME: cb7d5220-e91c-4271-8610-66a73c6dc38e
+#+BEGIN_SRC ein :session 8888/Islands/Islands.ipynb :tangle ../Islands/main.py
+  class InfoBar(RectView):
+      def __init__(self, *args, **kwargs):
+          super().__init__(*args, **kwargs)
+#+END_SRC
+
+#+RESULTS: cb7d5220-e91c-4271-8610-66a73c6dc38e
+: 
+
+**** Main Display
+
+Message view needs to be scrollable.
+
+#+NAME: c9ce9bcf-c07b-4819-a143-93d254e565b3
+#+BEGIN_SRC ein :session 8888/Islands/Islands.ipynb :tangle ../Islands/main.py
+  class MainDisplay(View):
+      def __init__(self, *args, **kwargs):
+          super().__init__(*args, **kwargs)
+          self.info_bar_view = LabelView(' Status/Resources',
+                                         align_horz='left',
+                                         layout_options=LayoutOptions.row_top(1))
+          self.world_view = View(layout_options=LayoutOptions(top=2))
+          self.message_view = RectView(layout_options=LayoutOptions.row_bottom(10))
+          self.add_subviews([self.info_bar_view, self.world_view, self.message_view])
+#+END_SRC
+
+#+RESULTS: c9ce9bcf-c07b-4819-a143-93d254e565b3
+: 
+
+** Main Game Loop
+See ipy_apps.py and [[ipynb:(:url-or-port%20"http://localhost:8890"%20:name%20"Islands/Interactive%20Consoles.ipynb")][InteractiveApp Consoles.ipynb]].
+
+Loop will dispatch to do (in no particular order):
+
+ 1. Physics update/world state update.
+ 2. Poll and process user input.
+ 3. AI update.
+ 4. View update.
+
+With clubsandwich, a director with IPython integration looks like the following.
+
+#+NAME: 083d9222-abe9-40d9-9f01-c51245ed7396
+#+BEGIN_SRC ein :session 8888/Islands.ipynb :tangle ../Islands/main.py
+  from gameclock import GameClock
+
+  class GameLoop(DirectorLoop):
+      def __init__(self):
+          super().__init__()
+          self.clock = GameClock()
+          try:
+              import IPython.core
+              shell = IPython.core.getipython.get_ipython()
+              self._kernel = shell.kernel
+          except ImportError:
+              self._kernel = None
+
+      def terminal_init(self):
+          super().terminal_init()
+          terminal.set("""
+          window.resizeable=true;
+          """)
+
+      def get_initial_scene(self):
+          return MainMenuScene()
+
+      def terminal_update(self):
+          self.clock.tick()
+          if self._kernel:
+              self._kernel.do_one_iteration()
+          return super().terminal_update()
+
+#+END_SRC
+
+#+RESULTS: 083d9222-abe9-40d9-9f01-c51245ed7396
+: 
+
+#+RESULTS:
+
+* Representing the World
+:PROPERTIES:
+:ID:       6987c5f9-934e-4bbc-9de6-8d2479aec599
+:END:
+
+The basic data structures that we use to represent the world.
+
+** The Feature and Elevation Map
+
+One can see an implementation of this in [[file:c:/Users/mille/Dropbox/Projects/Islands/MapChunk.py::class%20PolygonMap(object):][MapChunk]] with the PolygonMap class. The
+basic datastructure is a network. We'll see how efficient this is, but the
+expressive power is considerable. Each node in the graph is a [[file:c:/Users/mille/Dropbox/Projects/Islands/MapChunk.py::class%20TerrainFeatures(object):][TerrainFeatures]]
+object.
+
+Below let's see some examples of using the class:
+
+#+NAME: 2d43fca7-8b1f-4bdb-bf2a-a40eedde0a7d
+#+BEGIN_SRC ein :session 8888 :session 8888/Islands/Islands.ipynb
+  from MapChunk import PolygonMap
+
+  map = PolygonMap()
+
+  map[0, 0].elevation = 1.0
+  map[0,0].elevation
+
+  map.dist_map
+#+END_SRC
+
+#+RESULTS: 2d43fca7-8b1f-4bdb-bf2a-a40eedde0a7d
+: ---------------------------------------------------------------------------
+ModuleNotFoundError                       Traceback (most recent call last)
+<ipython-input-10-b986fa6692be> in <module>()
+----> 1 from MapChunk import PolygonMap
+      2 
+      3 map = PolygonMap()
+      4 
+      5 map[0, 0].elevation = 1.0
+
+c:\Users\millejoh\Dropbox\Projects\Islands\MapChunk.py in <module>()
+      1 import random as rand
+      2 import numpy as np
+----> 3 import networkx as nx
+      4 import attr
+      5 import esper
+
+ModuleNotFoundError: No module named 'networkx'
+
+
+#+RESULTS:
+: <scipy.spatial.kdtree.KDTree at 0x2a8b2e7c3c8>
+
+*** On Polygonal Map Generation
+Currently [[file:worldgen.py::class%20WorldGenerator(object):][worldgen.py]] makes heavy use of Perlin noise to generate heightmaps and
+climate, etc for the world. Another way of doing this is to generate a [[http://www-cs-students.stanford.edu/~amitp/game-programming/polygon-map-generation/][polygonal
+tiling]] using voronoi diagrams.
+
+Amit's [[https://github.com/amitp/mapgen2][code]] uses Actionscript, and is based on another Actionscript [[http://nodename.github.io/as3delaunay/][library]] that
+does voronoi/delauny calculations.
+
+In the world of Python it appears that [[http://docs.scipy.org/doc/scipy-0.14.0/reference/tutorial/spatial.html][SciPy]] and [[https://github.com/materialsvirtuallab/pyhull][pyhull]] both provide
+implementations of the algorithms Amit is using for map generation. They seem to
+currently be roughly equivalent in terms of performance. SciPy includes many
+pots and pans, so probably is not as pragmatic a choice for inclusion in a game
+engine. Note, though, that current SciPy (version > 12) uses qhull to implement
+the Voronoi tesselation algorithm.
+
+My biggest stumbling block in this method was how to deal with inifinite Voronoi
+vertices (i.e. off the edge of the map) when doing the relax step. Turns at the
+solution is ridiculously simply - just ignore these points. The results are
+still asthetically pleasing.
+
+Another lesson learned is that being able to visualize the steps via matplotlib
+provides immediate and useful feedback into the efficacy of a given method.
+
+Still need data structures to represent information about the map. Use the PAN/REN
+[[http://www.voronoi.com/wiki/index.php?title=PAN_graphs][terminology]]?
+** Logical Representation
+
+Some initial thoughts on data structures:
+
+First design rule — NO INFINITE WORLDS. Multiple worlds are okay, but
+an infinite world is going to make sophisticated AI difficult, I
+think.
+
+The idea of breaking world data into „chunks“ seems
+reasonable. Playing with chunk sizes should allow one to balance space
+and speed. My only concern is how to stitch together adjacent
+chunks. There needs to be some sort of smoothing function to eliminate
+abrupt transitions between chunks.
+
+Terrain squares in a chunk or defined by:
+ — Height
+ — temperature
+ — ground moisture (1 for water, 0 rock)
+ — ground type
+ — foliage types
+ — foliage density?
+
+In general the higher up you are on the map the drier the soil/ground
+will be. Also ground and height together will determine the allowable
+ground types for a given terrain square.
+
+Tcod has tools for generating height apps and, I believe, erosion
+maps.
+
+Can use tcod to generate a height map, but there won't be a 1-1
+correspondence between height+moisture values and terrain
+squares. Rather a heightP+moisture value will represent an NxN grid of
+terrain squares.
+
+Algorithm for generating a chunk:
+ — specify height and moisture grid size.
+ — specify grid square to terrain grid scaling (e.g. One grid square = 10x10 terrain squares)
+ — generate height map.
+ — generate ground moisture map (<— heights)
+ — generate terrain map (<— heights and moistures).
+
+Drawing implemented in multiple passes. First to draw terrain, second
+for features and actors.
+
+Structures (like homes, shops, hospitals, barracks, etc) are
+represented as logical entities. That is, they are not represented
+directly in the map. Instead of a large list of wall objects, for
+instance, we could define a rectangle of a certain width and height,
+centered at a certain (x, y) then during the drawing pass the
+structure would draw the appropriate objects for walls, doors,
+windows, etc.
+
+Chunks can be stored and queried on disk, but can also be loaded
+completely into memory when speed matters. For initial implementation
+will only have one chunk to ease debugging optimization,
+
+#+BEGIN_SRC ein :session 8888/Islands/Islands.ipynb
+  import attr
+
+  @attr.s
+  class World(object):
+      chunks = attr.ib()
+      actors = attr.ib()
+      structures = attr.ib()
+      objects = attr.ib()
+
+  @attr.s
+  class WorldChunk(object):
+      elevations = attr.ib()
+      temperatures = attr.ib()
+      ground_types = attr.ib()
+      ground_moistures = attr.ib()
+      foliage_types = attr.ib()
+      foliage_densities = attr.ib()
+
+  @attr.s
+  class Feature(object):
+      x = attr.ib()
+      y = attr.ib()
+      name = attr.ib()
+      short_desc = attr.ib()
+      long_desc = attr.ib()
+#+END_SRC
+
+#+RESULTS:
+
+** Viewable representation
+
+`World` object acts as a database that is queried by a `WorldView`
+object, which is a subclass of `cocos.layer.ScrollableLayer,` or maybe
+just `Layer`?
+ 
+Need a Layer-like object that performs visualization operations based
+on contents on an numpy array object.
+
+For prototyping use simple 2D geometric shapes with color (and in some
+cases, maybe textures) to draw everything.
+
+** Objects/Props/Entities
+Props as in stage props. Have properties and physical presence in world, but otherwise do
+not actively participate in game loop like agents do.
+
+#+begin_src ein :session 8888/Islands/Islands.ipynb
+  class GameProp(object):
+      def __init__(self):
+          pass
+
+#+end_src
+
+Lots of issues to consider here, but issue is how to make creating and editing
+objects as easy as possible. Think the way we want to do this is to define
+entities using org buffers.
+
+Monolithic classes that try to anticipate all methods does not seem good design.
+Class should simply define data structure and maybe some performance critical behaviors?
+
+Rather want to define messaging/event protocol. See below.
+
+Do we have a data structure that indicates what events and messages an entity
+responds to?
+
+** Event/Messaging Protocol
+There are ample examples in the python world. Pyglet is perhaps the most
+appropriate example for game systems, but maybe asyncio, zmq and bretheren also
+have lessons to study?
+
+Entity will define what message it responds to, and what happens when it
+receives the message.
+
+** Agents/Actors (Entities with will)
+
+#+begin_src ipython :session t
+  class Actor(Entity):
+      def on_update(self, world_state):
+          self.observe(world_state)
+          self.think()
+          self.act(world_state)
+#+end_src
+
+** Behaviors
+How entities and actor interact with each other and the world.
+
+Implemented as events (as in pyglet event system?) and finite state machines.
+
+** Defining entities through org-mode
+What, exactly is entity/component architecture?
+
+** Old Stuff
+*** Treat World State as a Relational DB?
+Or as arrays/linear spaces?
+
+Or as logic programming problem?
+
+From [[https://sites.google.com/site/pydatalog/3---datalog-and-data-integration][pydatalog]]:
+
+#+begin_src ein :session 8888/Islands/Islands.ipynb
+  from pyDatalog import pyDatalog
+  from sqlalchemy.ext.declarative import declarative_base
+
+  # define a base class with SQLAlchemy and pyDatalog capabilities
+  Base = declarative_base(cls=pyDatalog.Mixin, metaclass=pyDatalog.sqlMetaMixin)
+
+  from sqlalchemy import create_engine
+  from sqlalchemy.orm import sessionmaker
+
+  # create database in memory
+  engine = create_engine('sqlite:///:memory:', echo=False)
+
+  # open a session on a database, then associate it to the Base class
+  Session = sessionmaker(bind=engine)
+  session = Session()
+  Base.session = session
+
+#+end_src
+
+#+RESULTS:
+
+* Modeling the world
+:PROPERTIES:
+:ID:       6565c9f8-fc65-4f11-92b5-6d8bf55616df
+:END:
+Model the flow of currency (money/productivity)? Agents/citizens are sources,
+but what would be the sinks? Banks, commodity and stock exchanges are nodes?
+
+** World Generation
+At the moment worldgen.py does some of this, but is highly dependent on
+heightmaps. We want to move towards using PolygonMap objects and manipulate all
+their TerrainFeatures data structures.
+
+* References
+:PROPERTIES:
+:ID:       0be5dbdc-8f43-415f-b3bf-437d5e8340e4
+:END:
+- Never forget about Amit's [[http://www.redblobgames.com/][Red Blob Games]].
+- [[http://networkx.readthedocs.io/en/networkx-1.11/tutorial/tutorial.html][NetworkX]] library for working with graphs.
+- [[https://github.com/tyarkoni/transitions][Transitions]] library for finite state machines.
+- [[https://github.com/hynek/attrs][attrs]] - Python attributes without boilerplate.
+- [[http://pyglet.readthedocs.io/en/pyglet-1.2-maintenance/programming_guide/events.html][pylet]] event framework docs.
+- [[https://docs.python.org/3.5/library/asyncio.html#module-asyncio][asyncio]] Python 3.5+ support for asynchronous I/O, event loops, coroutines and tasks.
+- Link to docs for the event framework.
+- [[https://github.com/cprogrammer1994/ModernGL][ModernGl]].
