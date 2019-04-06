@@ -382,11 +382,11 @@ class WorldGenerator(object):
         smooth_dy = [-1, -1, -1, 0, 0, 0, 1, 1, 1]
         smooth_weight = [2, 8, 2, 8, 20, 8, 2, 8, 2]
 
-        hm.kernel_transform(self._hm, smooth_ks, smooth_dx, smooth_dy,
-                            smooth_weight, -1000, 1000)
-        hm.kernel_transform(self._hm2, smooth_ks, smooth_dx, smooth_dy,
-                            smooth_weight, -1000, 1000)
-        self._hm = hm.normalize(self._hm)
+        self._hm.kernel_transform(smooth_ks, smooth_dx, smooth_dy,
+                                  smooth_weight, -1000, 1000)
+        self._hm2.kernel_transform(self._hm2, smooth_ks, smooth_dx, smooth_dy,
+                                   smooth_weight, -1000, 1000)
+        self._hm.normalize()
 
     def compute_precipitation(self):
         water_add, slope_coef, base_precip = 0.03, 2.0, 0.01
@@ -434,7 +434,7 @@ class WorldGenerator(object):
                             water_amount -= precip
                             water_amount = max(0.0, water_amount)
 
-        fmin, fmax = np.amin(self._precipitation), np.amax(self._precipitation)
+        fmin, fmax = self._precipitation.get_minmax()
         # latitude impact
         for y in range(self.height//4, 3*self.height//4):
             lat = y - (self.height/4) * (2/self.height)
@@ -712,6 +712,6 @@ def test_clamp():
     assert clamp(0, 10, -1) == 0
     assert clamp(0, 10, 50) == 10
 
-if __name__ == "__main__":
-    wg = WorldGenerator(400,400)
-    wg.generate()
+# if __name__ == "__main__":
+#     wg = WorldGenerator(400,400)
+#     wg.generate()

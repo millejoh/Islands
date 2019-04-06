@@ -1,69 +1,57 @@
 #+TITLE: The Islands Design Manual
 #+STARTUP: indent
 
+* Bearlibterminal
 
+How to run a terminal loop from inside IPython.
 
-* Bearlib + cl-dormouse?
+#+NAME: 7e4f0d67-a505-454d-9d70-2a2eebab20f4
+#+BEGIN_SRC ein :session 8888/Bearlibterminal.ipynb
+        from clubsandwich.blt.nice_terminal import terminal
+        from clubsandwich.blt.loop import BearLibTerminalEventLoop
+        from clubsandwich.geom import Point
+        from gameclock import GameClock
 
-[[https://bitbucket.org/eeeickythump/cl-dormouse][cl-dormouse]] is GUI library for libtcod, written in CL.
+        class MyDemo(BearLibTerminalEventLoop):
+            def __init__(self):
+                super().__init__()
+                self.should_exit = False
+                self.clock = GameClock()
+                self.a = Point(10, 10)
+                self.b = self.a+Point(1, 1)
+                try:
+                    import IPython.core
+                    shell = IPython.core.getipython.get_ipython()
+                    self._kernel = shell.kernel
+                except ImportError:
+                    self._kernel = None
 
-You are thinking clubsandwich, I think.
+            def terminal_init(self):
+                super().terminal_init()
+                terminal.set("""
+                window.title='Islands'; 
+                font: unscii-16-full.ttf, size=12;
+                """) 
+                terminal.print(0, 1, "Cmd+Q/Alt+F4/whatever to quit")
 
-* TCOD Python Wrapper
-** ConsoleBuffer: Fast Console/Window Drawing
-Want to treat TCOD console as numpy array:
+            def terminal_read(self, val):
+                self.should_exit = val == terminal.TK_CLOSE or 'q'
 
-#+BEGIN_SRC ipython :session
-  import tcod.console
+            def terminal_update(self):
+                terminal.put(self.a, 'a')
+                terminal.put(self.b, 'b')
+                self.a = self.a+Point(1,0)
+                self.a.x = self.a.x % 20
+                self.clock.tick()
+                if self._kernel:
+                    self._kernel.do_one_iteration()
 
-  c = tcod.console(80,80)
-  c.foreground[10, 10]
-  c.background[0,0]
-  c.char[5, 5]
-  c.flush()
+                return not self.should_exit
 #+END_SRC
 
-samples_py uses a meshgrid and three 1-D arrays for R, G, B components. Would be
-more readable if there was a better way than:
+#+RESULTS: 7e4f0d67-a505-454d-9d70-2a2eebab20f4
+: 
 
-#+BEGIN_SRC ipython :session
-  c.background_r[0,0] = red
-  c.background_g[0,0] = green
-  c.background_b[0,0] = blue
-#+END_SRC
-
-Thankfully numpy is truly awesome. Check this out:
-
-#+BEGIN_SRC ipython :session
-  a = np.zeros((10,10,3))
-  # Slow!
-  a[0,0] = tcod.blue
-  # Fast!
-  a[0,0,0] = tcod.blue.r
-  a[0,0,1] = tcod.blue.g
-  a[0,0,2] = tcod.blue.b
-
-  a[..., 2].ravel('F')
-#+END_SRC
-
-The second call works as expected, while the last call returns a 1-D array of
-all the blue component values. Note that this is really slow since numpy has to
-figure out types and do conversions. Much faster to explicitly assign the RGB
-components. Also tcod seems to do array indexing by column-major format (I think
-this is so that (x y) references match user expectations more closely), so the call
-to ravel is adjusted accordingly.
-
-Maybe what I want is the slow, pokey, but general Console class with a
-FillConsole (or other suitably named) subclass that implements the Numpy array
-details. Implementing something similar to [[file:tcod/libtcodpy.py::class%20ConsoleBuffer:][ConsoleBuffer]], except with numpy
-arrays, seems smart.
-
-** CL-Dormouse Port
-
-Windowing/GUI system built on tcod. This is the Islands.gui module.
-Islands.tcod is a slightly more pythonic wrapper around libtcodpy.
-
-*** Classes
 * Architecture
 :PROPERTIES:
 :ID:       413df898-c646-4f36-b115-cede7d660fb1
@@ -649,3 +637,66 @@ their TerrainFeatures data structures.
 - [[https://docs.python.org/3.5/library/asyncio.html#module-asyncio][asyncio]] Python 3.5+ support for asynchronous I/O, event loops, coroutines and tasks.
 - Link to docs for the event framework.
 - [[https://github.com/cprogrammer1994/ModernGL][ModernGl]].
+* Archives
+
+** Bearlib + cl-dormouse?
+
+[[https://bitbucket.org/eeeickythump/cl-dormouse][cl-dormouse]] is GUI library for libtcod, written in CL.
+
+You are thinking clubsandwich, I think.
+** TCOD Python Wrapper
+*** ConsoleBuffer: Fast Console/Window Drawing
+Want to treat TCOD console as numpy array:
+
+#+BEGIN_SRC ipython :session
+  import tcod.console
+
+  c = tcod.console(80,80)
+  c.foreground[10, 10]
+  c.background[0,0]
+  c.char[5, 5]
+  c.flush()
+#+END_SRC
+
+samples_py uses a meshgrid and three 1-D arrays for R, G, B components. Would be
+more readable if there was a better way than:
+
+#+BEGIN_SRC ipython :session
+  c.background_r[0,0] = red
+  c.background_g[0,0] = green
+  c.background_b[0,0] = blue
+#+END_SRC
+
+Thankfully numpy is truly awesome. Check this out:
+
+#+BEGIN_SRC ipython :session
+  a = np.zeros((10,10,3))
+  # Slow!
+  a[0,0] = tcod.blue
+  # Fast!
+  a[0,0,0] = tcod.blue.r
+  a[0,0,1] = tcod.blue.g
+  a[0,0,2] = tcod.blue.b
+
+  a[..., 2].ravel('F')
+#+END_SRC
+
+The second call works as expected, while the last call returns a 1-D array of
+all the blue component values. Note that this is really slow since numpy has to
+figure out types and do conversions. Much faster to explicitly assign the RGB
+components. Also tcod seems to do array indexing by column-major format (I think
+this is so that (x y) references match user expectations more closely), so the call
+to ravel is adjusted accordingly.
+
+Maybe what I want is the slow, pokey, but general Console class with a
+FillConsole (or other suitably named) subclass that implements the Numpy array
+details. Implementing something similar to [[file:tcod/libtcodpy.py::class%20ConsoleBuffer:][ConsoleBuffer]], except with numpy
+arrays, seems smart.
+
+*** CL-Dormouse Port
+
+Windowing/GUI system built on tcod. This is the Islands.gui module.
+Islands.tcod is a slightly more pythonic wrapper around libtcodpy.
+
+**** Classes
+

@@ -3,10 +3,10 @@ import numpy as np
 import networkx as nx
 import attr
 import esper
-#import tcod # Replace with bearlibterminal colors
-from bearlibterminal.terminal import color_from_argb, color_from_name
+#from bearlibterminal.terminal import color_from_argb, color_from_name
 from uuid import uuid1, uuid4
 from scipy.spatial import Voronoi, voronoi_plot_2d, KDTree
+from color import color_from_rgb_int, color_from_name
 
 biomes = [['SNOW', 'SNOW', 'SNOW', 'TUNDRA', 'BARE', 'SCORCHED'],
           ['TAIGA', 'TAIGA', 'SHRUBLAND', 'SHRUBLAND', 'TEMPERATE_DESERT', 'TEMPERATE_DESERT'],
@@ -15,19 +15,19 @@ biomes = [['SNOW', 'SNOW', 'SNOW', 'TUNDRA', 'BARE', 'SCORCHED'],
           ['TROPICAL_RAIN_FOREST', 'TROPICAL_RAIN_FOREST', 'TROPICAL_SEASONAL_FOREST', 'TROPICAL_SEASONAL_FOREST',
            'GRASSLAND', 'SUBTROPICAL_DESERT']]
 
-biome_colors = {'SNOW': color_from_argb(255,248, 248, 248),
-                'TUNDRA': color_from_argb(255,221, 221, 187),
-                'BARE': color_from_argb(255,187, 187, 187),
-                'SCORCHED': color_from_argb(255,153, 153, 153),
-                'TAIGA': color_from_argb(255,204, 212, 187),
-                'SHRUBLAND': color_from_argb(255,194, 204, 187),
-                'GRASSLAND': color_from_argb(255,192, 212, 170),
-                'TEMPERATE_DESERT': color_from_argb(255,228, 232, 202),
-                'TEMPERATE_RAIN_FOREST': color_from_argb(255,164, 196, 168),
-                'TEMPERATE_DECIDUOUS_FOREST': color_from_argb(255,180, 201, 169),
-                'TROPICAL_RAIN_FOREST': color_from_argb(255,156, 187, 169),
-                'TROPICAL_SEASONAL_FOREST': color_from_argb(255,169, 204, 164),
-                'SUBTROPICAL_DESERT': color_from_argb(255,233, 221, 199)}
+biome_colors = {'SNOW': color_from_rgb_int(248, 248, 248),
+                'TUNDRA': color_from_rgb_int(221, 221, 187),
+                'BARE': color_from_rgb_int(187, 187, 187),
+                'SCORCHED': color_from_rgb_int(153, 153, 153),
+                'TAIGA': color_from_rgb_int(204, 212, 187),
+                'SHRUBLAND': color_from_rgb_int(194, 204, 187),
+                'GRASSLAND': color_from_rgb_int(192, 212, 170),
+                'TEMPERATE_DESERT': color_from_rgb_int(228, 232, 202),
+                'TEMPERATE_RAIN_FOREST': color_from_rgb_int(164, 196, 168),
+                'TEMPERATE_DECIDUOUS_FOREST': color_from_rgb_int(180, 201, 169),
+                'TROPICAL_RAIN_FOREST': color_from_rgb_int(156, 187, 169),
+                'TROPICAL_SEASONAL_FOREST': color_from_rgb_int(169, 204, 164),
+                'SUBTROPICAL_DESERT': color_from_rgb_int(233, 221, 199)}
 
 
 def relax(pts, n=2):
@@ -128,7 +128,7 @@ class PolygonMap(object):
         y0 = int(y0 or 0)
         x1 = int(x1 or self.width)
         y1 = int(y1 or self.height)
-        new_hm = np.zeros((x1-x0), (y1-y0))
+        new_hm = np.zeros(((x1-x0), (y1-y0)))
         for i in range(x0, x1):
             for j in range(y0, y1):
                 new_hm[i, j] = self.terrain(i, j, feature_name)

@@ -20,10 +20,11 @@ from clubsandwich.ui import (
 RectView()
 
 LOGO = """
-  _______     __     ____             __       _     __
- / ___/ /_ __/ /    / __/__ ____  ___/ /    __(_)___/ /
-/ /__/ / // / _ \  _\ \/ _ `/ _ \/ _  / |/|/ / / __/ _ \\
-\___/_/\_,_/_.__/ /___/\_,_/_//_/\_,_/|__,__/_/\__/_//_/
+   _____      __
+  /_  _/ __  / /             __  __
+   / / / _/ / /___ ____  ___/ // _/
+ _/ /_ \ \ / /| _  / _ \/ _  / \ \
+/____//__//_/ \_,_/_//_/\_,_/ /__/
 """
 
 
@@ -37,7 +38,7 @@ class MainMenuScene(UIScene):
                 "Try resizing the window!",
                 layout_options=LayoutOptions.centered('intrinsic', 'intrinsic')),
             ButtonView(
-                text="Play", 
+                text="Play",
                 callback=self.play,
                 color_bg='#000000', color_fg='#00ff00',
                 layout_options=LayoutOptions.row_bottom(4).with_updates(
@@ -64,36 +65,6 @@ class MainMenuScene(UIScene):
 
     def show_settings(self):
         self.director.push_scene(SettingsScene())
-
-class CharacterCreationScene(UIScene):
-    def __init__(self, *args, **kwargs):
-        view = WindowView(
-            'Character',
-            layout_options=LayoutOptions(top=7, right=10, bottom=7, left=10),
-            subviews=[
-                LabelView('Name:', layout_options=LayoutOptions(height=1, top=1, bottom=None)),
-                SingleLineTextInputView(
-                    callback=self.print_name,
-                    layout_options=LayoutOptions
-                        .centered('intrinsic', 'intrinsic')
-                        .with_updates(top=2, bottom=None)),
-                LabelView('Strength:', layout_options=LayoutOptions(height=1, top=4, bottom=None)),
-                IntStepperView(
-                    value=10, min_value=1, max_value=20, callback=lambda x: print(x),
-                    layout_options=LayoutOptions
-                        .centered('intrinsic', 'intrinsic')
-                        .with_updates(top=5)),
-                ButtonView(
-                    text='Cancel', callback=lambda: self.director.pop_scene(),
-                    layout_options=LayoutOptions.row_bottom(3)),
-            ]
-        )
-        super().__init__(view, *args, **kwargs)
-
-        self.covers_screen = True
-
-    def print_name(self, text):
-        print("Your name is:", text)
 
 class SettingsScene(UIScene):
     OPTIONS = {
@@ -157,10 +128,26 @@ class GameScene(UIScene):
         super().terminal_read(val)
         if val == 'q' or val =='Q':
             self.director.pop_scene()
+        return True
 
 class InfoBar(RectView):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
+from clubsandwich.draw import draw_line_horz
+from clubsandwich.geom import Point
+
+class WorldView(View):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.view_center = Point()
+        self.the_map = None
+
+    def draw(self, ctx):
+        w, h = self.bounds.width, self.bounds.height
+        draw_line_horz(Point(0,0), w-5, ctx)
+        draw_line_horz(Point(0, 10), w-5, ctx)
+
 
 class MainDisplay(View):
     def __init__(self, *args, **kwargs):
@@ -168,7 +155,7 @@ class MainDisplay(View):
         self.info_bar_view = LabelView(' Status/Resources',
                                        align_horz='left',
                                        layout_options=LayoutOptions.row_top(1))
-        self.world_view = View(layout_options=LayoutOptions(top=2))
+        self.world_view = WorldView(layout_options=LayoutOptions(top=2))
         self.message_view = RectView(layout_options=LayoutOptions.row_bottom(10))
         self.add_subviews([self.info_bar_view, self.world_view, self.message_view])
 
@@ -195,7 +182,12 @@ class GameLoop(DirectorLoop):
         return MainMenuScene()
 
     def terminal_update(self):
-        self.clock.tick()
+        # pdb.set_trace()
+        super().terminal_update()
         if self._kernel:
             self._kernel.do_one_iteration()
-        return super().terminal_update()
+            self.clock.tick()
+        return True
+
+global global_director
+global_director = GameLoop()

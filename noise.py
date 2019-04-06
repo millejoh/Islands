@@ -1,7 +1,7 @@
 from collections import namedtuple
 from math import sqrt, floor
 import numpy as np
-from numba import jit
+#from numba import jit
 
 __author__ = 'millejoh'
 
@@ -474,7 +474,7 @@ class NoiseGenerator(object):
         ll = l % 256
 
         t0 = 0.6 - x0 * x0 - y0 * y0 - z0 * z0 - w0 * w0
-        
+
         if t0 < 0.0:
             n0 = 0.0
         else:
