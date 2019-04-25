@@ -222,3 +222,17 @@ pip-log.txt
 # Binaries
 .idea/workspace.xml
 *.iml
+*.png
+*.ttf
+
+##########
+## Lisp
+##########
+
+*.fasl
+
+######################
+## Project Specific
+######################
+
+lisp/_assets/
