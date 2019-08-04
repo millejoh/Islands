@@ -1,6 +1,48 @@
 #+TITLE: The Islands Design Manual
 #+STARTUP: indent
 
+* The Constraints
+** Game Engine Criteria
+
+1. Cross-platform (linux & windows)
+2. Text graphics (think tcod or bearlibterminal)
+3. Supports interactive development
+4. Easy event management
+ 
+*** Candidates
+
+**** Cl-Dormouse
+**** Trivial-gamekit
+**** Clubsandwich
+**** Python tcod
+
+*** The Test App
+
+Draw a draggable box with "Hello World" written inside.
+ 
+**** Trivial gamekit
+
+See [[file:lisp/trivial.lisp::(in-package%20:cl-user)][trivial.lisp]].
+
+*Comments*:
+
++Too hard to get alternate fonts working.+
+
+Picky about which images it will import (erroring and saying "Only RGBA images
+supported.").
+
+*CLUE* Timing of loading fonts and images is important. Works much better after
+trivial-gamekit has finished initializing/starting a game (i.e. after calling
+~(gamekit:start 'my-game)~).
+
+Combining text and images is ... trivial (I'm so clever).
+
+What about managing mouse and keyboard events? Not too hard using ~bind-button~
+and ~bind-cursor~ but responsiveness is slow for dragging.
+
+**** Dormouse
+
+
 * Bearlibterminal
 
 How to run a terminal loop from inside IPython.
@@ -60,7 +102,7 @@ How to run a terminal loop from inside IPython.
 Imports:
 
 #+NAME: 49d6257c-8f2c-4e96-b0e0-c1581b8fdae1
-#+BEGIN_SRC ein :session 8888/Islands.ipynb :tangle ../Islands/main.py
+#+BEGIN_SRC ein :session 8888/Islands.ipynb :tangle main.py
   from bearlibterminal import terminal
   from clubsandwich.blt.state import blt_state
   from clubsandwich.director import DirectorLoop, Scene
@@ -103,7 +145,7 @@ Using clubsandwich.
 *** Main Menu Scene
 
 #+NAME: f9d6cdc0-aa44-4347-b9cb-9bfaf814a764
-#+BEGIN_SRC ein :session 8888/Islands/Islands.ipynb :tangle ../Islands/main.py
+#+BEGIN_SRC ein :session 8888/Islands/Islands.ipynb :tangle main.py
   LOGO = """
     _______     __     ____             __       _     __
    / ___/ /_ __/ /    / __/__ ____  ___/ /    __(_)___/ /
@@ -158,7 +200,7 @@ Using clubsandwich.
 *** Character Creation
 
 #+NAME: e2bd4e22-6077-498f-9a5a-ae4fb15ff29e
-#+BEGIN_SRC ein :session 8888/Islands/Islands.ipynb :tangle ../Islands/main.py
+#+BEGIN_SRC ein :session 8888/Islands/Islands.ipynb :tangle main.py
 class CharacterCreationScene(UIScene):
     def __init__(self, *args, **kwargs):
         view = WindowView(
@@ -199,7 +241,7 @@ class CharacterCreationScene(UIScene):
 *** Settings
 
 #+NAME: c63ccfae-99cc-4246-b350-f0432fb65072
-#+BEGIN_SRC ein :session 8888/Islands/Islands.ipynb :tangle ../Islands/main.py
+#+BEGIN_SRC ein :session 8888/Islands/Islands.ipynb :tangle main.py
   class SettingsScene(UIScene):
       OPTIONS = {
           'Difficulty': ["I'm too young to die", "Hey, not too rough", "Hurt me plenty", "Ultra-Violence", "Nightmare!"],
@@ -255,7 +297,7 @@ class CharacterCreationScene(UIScene):
 *** Game Scene
 
 #+NAME: c10b571e-2670-45ff-a133-2e290c05a815
-#+BEGIN_SRC ein :session 8888/Islands/Islands.ipynb :tangle ../Islands/main.py
+#+BEGIN_SRC ein :session 8888/Islands/Islands.ipynb :tangle main.py
   class GameScene(UIScene):
       def __init__(self, *args, **kwargs):
           self.main_display = MainDisplay(layout_options=LayoutOptions(left=0.2))
@@ -282,7 +324,7 @@ class CharacterCreationScene(UIScene):
 **** Side Info Bar
 
 #+NAME: cb7d5220-e91c-4271-8610-66a73c6dc38e
-#+BEGIN_SRC ein :session 8888/Islands/Islands.ipynb :tangle ../Islands/main.py
+#+BEGIN_SRC ein :session 8888/Islands/Islands.ipynb :tangle main.py
   class InfoBar(RectView):
       def __init__(self, *args, **kwargs):
           super().__init__(*args, **kwargs)
@@ -296,7 +338,7 @@ class CharacterCreationScene(UIScene):
 Message view needs to be scrollable.
 
 #+NAME: c9ce9bcf-c07b-4819-a143-93d254e565b3
-#+BEGIN_SRC ein :session 8888/Islands/Islands.ipynb :tangle ../Islands/main.py
+#+BEGIN_SRC ein :session 8888/Islands/Islands.ipynb :tangle main.py
   class MainDisplay(View):
       def __init__(self, *args, **kwargs):
           super().__init__(*args, **kwargs)
@@ -324,7 +366,7 @@ Loop will dispatch to do (in no particular order):
 With clubsandwich, a director with IPython integration looks like the following.
 
 #+NAME: 083d9222-abe9-40d9-9f01-c51245ed7396
-#+BEGIN_SRC ein :session 8888/Islands.ipynb :tangle ../Islands/main.py
+#+BEGIN_SRC ein :session 8888/Islands.ipynb :tangle main.py
   from gameclock import GameClock
 
   class GameLoop(DirectorLoop):
@@ -467,7 +509,7 @@ maps.
 
 Can use tcod to generate a height map, but there won't be a 1-1
 correspondence between height+moisture values and terrain
-squares. Rather a heightP+moisture value will represent an NxN grid of
+squares. Rather a height+moisture value will represent an NxN grid of
 terrain squares.
 
 Algorithm for generating a chunk:
@@ -491,6 +533,8 @@ windows, etc.
 Chunks can be stored and queried on disk, but can also be loaded
 completely into memory when speed matters. For initial implementation
 will only have one chunk to ease debugging optimization,
+
+Features = structures + objects?
 
 #+BEGIN_SRC ein :session 8888/Islands/Islands.ipynb
   import attr
@@ -521,6 +565,84 @@ will only have one chunk to ease debugging optimization,
 #+END_SRC
 
 #+RESULTS:
+
+And in lisp:
+
+#+BEGIN_SRC lisp :session t :tangle lisp/world.lisp
+  (in-package :islands)
+
+  (defclass world ()
+    ((terrain :initarg :terrain :accessor terrain)
+     (features :initarg :features :accessor features)
+     (actors :initarg :actors :accessor actors)))
+
+  (defun new-world (width height)
+    (let ((terrain (new-terrain width height)))
+      (make-instance 'world
+                     :terrain terrain
+                     :features (make-hash-table)
+                     :actors (make-hash-table))))
+
+  (defclass actor ()
+    ((x :initform :x)
+     (y :initform :y)
+     (name :initform :name)
+     (short-description :initform :short-description)
+     (long-description :initform :long-description)))
+
+  (defun new-terrain (width height)
+    (make-array (list width height 6) :element-type 'float :initial-element 0.0))
+
+  (defmacro terrain-elevation (terrain x y)
+    `(aref ,terrain ,x ,y 0))
+
+  (defmacro terrain-temperature (terrain x y)
+    `(aref ,terrain ,x ,y 1))
+
+  (defmacro terrain-ground-type (terrain x y)
+    `(aref ,terrain ,x ,y 2))
+
+  (defmacro terrain-ground-moisture (terrain x y)
+    `(aref ,terrain ,x ,y 3))
+
+  (defmacro terrain-foliage-type (terrain x y)
+    `(aref ,terrain ,x ,y 4))
+
+  (defmacro terrain-foliage-density (terrain x y)
+    `(aref ,terrain ,x ,y 5))
+
+  (defmacro with-terrain (terrain &rest body)
+    (let ((ter-obj (gensym)))
+      `(let ((,ter-obj ,terrain))
+         (flet ((elevation (x y)
+                  (terrain-elevation ,ter-obj x y))
+                (set-elevation (x y val)
+                  (setf (terrain-elevation ,ter-obj x y) val))
+                (temperature (x y)
+                  (terrain-temperature ,ter-obj x y))
+                (set-temperature (x y val)
+                  (setf (terrain-temperature ,ter-obj x y) val))
+                (ground-type (x y)
+                  (terrain-ground-type ,ter-obj x y))
+                (set-ground-type (x y val)
+                  (setf (terrain-ground-type ,ter-obj x y) val))
+                (ground-moisture (x y)
+                  (terrain-ground-moisture ,ter-obj x y))
+                (set-ground-moisture (x y val)
+                  (setf (terrain-ground-moisture ,ter-obj x y) val))
+                (foliage-type (x y)
+                  (terrain-foliage-type ,ter-obj x y))
+                (set-foliage-type (x y val)
+                  (setf (terrain-foliage-type ,ter-obj x y) val))
+                (foliage-density (x y)
+                  (terrain-foliage-density ,ter-obj x y))
+                (set-foliage-density (x y val)
+                  (setf (terrain-foliage-density ,ter-obj x y) val)))
+           ,@body))))
+#+END_SRC
+
+#+RESULTS:
+: WITH-TERRAIN
 
 ** Viewable representation
 
@@ -633,7 +755,7 @@ their TerrainFeatures data structures.
 - [[http://networkx.readthedocs.io/en/networkx-1.11/tutorial/tutorial.html][NetworkX]] library for working with graphs.
 - [[https://github.com/tyarkoni/transitions][Transitions]] library for finite state machines.
 - [[https://github.com/hynek/attrs][attrs]] - Python attributes without boilerplate.
-- [[http://pyglet.readthedocs.io/en/pyglet-1.2-maintenance/programming_guide/events.html][pylet]] event framework docs.
+- [[http://pyglet.readthedocs.io/en/pyglet-1.2-maintenance/programming_guide/events.html][pyglet]] event framework docs.
 - [[https://docs.python.org/3.5/library/asyncio.html#module-asyncio][asyncio]] Python 3.5+ support for asynchronous I/O, event loops, coroutines and tasks.
 - Link to docs for the event framework.
 - [[https://github.com/cprogrammer1994/ModernGL][ModernGl]].
