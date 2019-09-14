@@ -1,6 +1,11 @@
 #+TITLE: The Islands Design Manual
 #+STARTUP: indent
 
+* References
+- [[https://github.com/vseloved/rutils/blob/master/docs/tutorial.md][rutils]]
+-
+
+
 * The Constraints
 ** Game Engine Criteria
 
@@ -8,7 +13,7 @@
 2. Text graphics (think tcod or bearlibterminal)
 3. Supports interactive development
 4. Easy event management
- 
+
 *** Candidates
 
 **** Cl-Dormouse
@@ -19,7 +24,7 @@
 *** The Test App
 
 Draw a draggable box with "Hello World" written inside.
- 
+
 **** Trivial gamekit
 
 See [[file:lisp/trivial.lisp::(in-package%20:cl-user)][trivial.lisp]].
@@ -41,7 +46,6 @@ What about managing mouse and keyboard events? Not too hard using ~bind-button~
 and ~bind-cursor~ but responsiveness is slow for dragging.
 
 **** Dormouse
-
 
 * Bearlibterminal
 
@@ -71,9 +75,9 @@ How to run a terminal loop from inside IPython.
             def terminal_init(self):
                 super().terminal_init()
                 terminal.set("""
-                window.title='Islands'; 
+                window.title='Islands';
                 font: unscii-16-full.ttf, size=12;
-                """) 
+                """)
                 terminal.print(0, 1, "Cmd+Q/Alt+F4/whatever to quit")
 
             def terminal_read(self, val):
@@ -92,7 +96,7 @@ How to run a terminal loop from inside IPython.
 #+END_SRC
 
 #+RESULTS: 7e4f0d67-a505-454d-9d70-2a2eebab20f4
-: 
+:
 
 * Architecture
 :PROPERTIES:
@@ -126,7 +130,7 @@ Imports:
 #+END_SRC
 
 #+RESULTS: 49d6257c-8f2c-4e96-b0e0-c1581b8fdae1
-: 
+:
 ModuleNotFoundErrorTraceback (most recent call last)
 <ipython-input-2-662f2bce136a> in <module>
 ----> 1 from bearlibterminal import terminal
@@ -164,7 +168,7 @@ Using clubsandwich.
                   "Try resizing the window!",
                   layout_options=LayoutOptions.centered('intrinsic', 'intrinsic')),
               ButtonView(
-                  text="Play", 
+                  text="Play",
                   callback=self.play,
                   color_bg='#000000', color_fg='#00ff00',
                   layout_options=LayoutOptions.row_bottom(4).with_updates(
@@ -195,7 +199,7 @@ Using clubsandwich.
 #+END_SRC
 
 #+RESULTS: f9d6cdc0-aa44-4347-b9cb-9bfaf814a764
-: 
+:
 
 *** Character Creation
 
@@ -234,7 +238,7 @@ class CharacterCreationScene(UIScene):
 #+END_SRC
 
 #+RESULTS: e2bd4e22-6077-498f-9a5a-ae4fb15ff29e
-: 
+:
 
 #+RESULTS:
 
@@ -290,7 +294,7 @@ class CharacterCreationScene(UIScene):
 #+END_SRC
 
 #+RESULTS: c63ccfae-99cc-4246-b350-f0432fb65072
-: 
+:
 
 #+RESULTS:
 
@@ -319,7 +323,7 @@ class CharacterCreationScene(UIScene):
 #+END_SRC
 
 #+RESULTS: c10b571e-2670-45ff-a133-2e290c05a815
-: 
+:
 
 **** Side Info Bar
 
@@ -331,7 +335,7 @@ class CharacterCreationScene(UIScene):
 #+END_SRC
 
 #+RESULTS: cb7d5220-e91c-4271-8610-66a73c6dc38e
-: 
+:
 
 **** Main Display
 
@@ -351,7 +355,7 @@ Message view needs to be scrollable.
 #+END_SRC
 
 #+RESULTS: c9ce9bcf-c07b-4819-a143-93d254e565b3
-: 
+:
 
 ** Main Game Loop
 See ipy_apps.py and [[ipynb:(:url-or-port%20"http://localhost:8890"%20:name%20"Islands/Interactive%20Consoles.ipynb")][InteractiveApp Consoles.ipynb]].
@@ -398,7 +402,7 @@ With clubsandwich, a director with IPython integration looks like the following.
 #+END_SRC
 
 #+RESULTS: 083d9222-abe9-40d9-9f01-c51245ed7396
-: 
+:
 
 #+RESULTS:
 
@@ -410,6 +414,88 @@ With clubsandwich, a director with IPython integration looks like the following.
 The basic data structures that we use to represent the world.
 
 ** The Feature and Elevation Map
+
+*** Sparse Arrays and Spatial Trees
+
+Define terrain features as rectangular shapes in a spatial tree.
+
+Terrain is stored in a sparse matrix, or maybe just a series of arrays? Or an array
+of structs?
+
+Array of structs implementation:
+
+#+BEGIN_SRC lisp
+  (in-package :islands)
+
+  (defparameter *world-terrain* nil)
+
+  (defstruct tobj
+    (elevation 0.0 :type short-float)
+    (temperature 0.0 :type short-float)
+    (ground-type 0.0 :type short-float)
+    (ground-moistures 0.0 :type short-float)
+    (foliage-type 0.0 :type short-float)
+    (foliage-density 0.0 :type short-float))
+
+  (defun add-hill (map cx cy radius max-height)
+    (destructuring-bind (max-x max-y) (array-dimension map)
+      (assert (and (< cx max-x)
+                   (< cy max-y)))
+      (let ((sx (- cx radius))
+            (sy (- cy radius)))) )
+    )
+
+  (setf *world-terrain* (make-array '(100 100) :element-type 'tobj :initial-element (make-tobj)))
+
+  (aref *world-terrain* 0 0)
+#+END_SRC
+
+#+RESULTS:
+: #S(TOBJ
+:    :ELEVATION 0.0
+:    :TEMPERATURE 0.0
+:    :GROUND-TYPE 0.0
+:    :GROUND-MOISTURES 0.0
+:    :FOLIAGE-TYPE 0.0
+:    :FOLIAGE-DENSITY 0.0)
+
+Or, taking advantage of tcod
+
+#+BEGIN_SRC lisp
+  (in-package :islands)
+
+  (defstruct world
+    elevations
+    temperatures
+    ground-types
+    ground-moistures
+    foliage-types
+    foliage-density)
+
+  (defun href (hm x y)
+    (tcod:heightmap-get-value hm x y))
+
+  (defun set-href (hm x y val)
+    (tcod:heightmap-set-value hm x y val))
+
+  (defsetf href (hm x y) (newval)
+    `(set-href ,hm ,x ,y ,newval))
+
+  (defun new-world (w h)
+    (let ((world (make-world))
+          (dims (list w h)))
+      (setf (world-elevations world) (tcod:heightmap-new w h)
+            (world-temperatures world) (make-array dims :element-type 'short-float :initial-element 0.0)
+            (world-ground-types world) (make-array dims :element-type 'short-float :initial-element 0.0)
+            (world-ground-moistures world) (make-array dims :element-type 'short-float :initial-element 0.0)
+            (world-foliage-types world) (make-array dims :element-type 'short-float :initial-element 0.0)
+            (world-foliage-density world) (make-array dims :element-type 'short-float :initial-element 0.0))))
+#+END_SRC
+
+#+RESULTS:
+: NEW-WORLD
+
+*** Using Graph Theory
 
 One can see an implementation of this in [[file:c:/Users/mille/Dropbox/Projects/Islands/MapChunk.py::class%20PolygonMap(object):][MapChunk]] with the PolygonMap class. The
 basic datastructure is a network. We'll see how efficient this is, but the
@@ -435,9 +521,9 @@ Below let's see some examples of using the class:
 ModuleNotFoundError                       Traceback (most recent call last)
 <ipython-input-10-b986fa6692be> in <module>()
 ----> 1 from MapChunk import PolygonMap
-      2 
+      2
       3 map = PolygonMap()
-      4 
+      4
       5 map[0, 0].elevation = 1.0
 
 c:\Users\millejoh\Dropbox\Projects\Islands\MapChunk.py in <module>()
@@ -649,7 +735,7 @@ And in lisp:
 `World` object acts as a database that is queried by a `WorldView`
 object, which is a subclass of `cocos.layer.ScrollableLayer,` or maybe
 just `Layer`?
- 
+
 Need a Layer-like object that performs visualization operations based
 on contents on an numpy array object.
 
@@ -821,4 +907,3 @@ Windowing/GUI system built on tcod. This is the Islands.gui module.
 Islands.tcod is a slightly more pythonic wrapper around libtcodpy.
 
 **** Classes
-

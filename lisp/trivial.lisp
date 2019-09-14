@@ -1,33 +1,27 @@
-(in-package :cl-user)
-(ql:quickload :trivial-gamekit)
-(ql:quickload :gamebox-frame-manager)
-(ql:quickload :kr)
-
-(defpackage :hello-gamekit
-  (:use :common-lisp :gamekit))
-
-(in-package :hello-gamekit)
+(in-package :islands)
 
 (defparameter *ufont* nil)
 (defvar *black* (gamekit:vec4 0 0 0 1))
+(defvar *white* (gamekit:vec4 1 1 1 1))
 (defvar *origin* (gamekit:vec2 0 0))
 (defvar *current-box-position* (gamekit:vec2 0 0))
 (defvar *t-color* (gamekit:vec4 0 0 0 1))
+(defvar *hex* (make-hex 300 300 10))
 
 (gamekit:defgame hello-gamekit ()
   ()
-  (:viewport-width 1600)
-  (:viewport-height 1200)
+  (:viewport-width 800)
+  (:viewport-height 600)
   (:fullscreen-p nil)
   (:prepare-resources t))
 
-(gamekit:register-resource-package :keyword "~/Projects/Islands/lisp/_assets/")
+(gamekit:register-resource-package :keyword "~/Dropbox/Projects/Islands/lisp/_assets/")
 
 (defun load-assets ()
-  (gamekit:define-image :engineer "Engineer.png")
-  (gamekit:define-font :unscii-font "unscii-16-full.ttf"))
+  (gamekit:define-image :engineer "Engineer.png"))
 
 (defun load-fonts ()
+  (gamekit:define-font :unscii-font "unscii-16-full.ttf")
   (setf *ufont* (gamekit:make-font :unscii-font 32)))
 
 (defun bindings ()
@@ -42,7 +36,7 @@
   (gamekit:bind-cursor (lambda (x y)
                          (process-mouse-move-event x y))))
 
-(defmethod post-initialize ((game hello-gamekit))
+(defmethod gamekit:post-initialize ((game hello-gamekit))
   (load-assets)
   (bindings))
 
@@ -66,11 +60,27 @@
   (gamekit:draw-rect *current-box-position* 250 100 :stroke-paint *black*)
   (let ((relpos (gamekit:add *current-box-position* (gamekit:vec2 5 5)))
         (impos (gamekit:add *current-box-position* (gamekit:vec2 5 (- 100 20)))))
+    (draw-hex-grid)
     (gamekit:draw-image impos :engineer :width 16 :height 16)
-    (gamekit:draw-text (format nil "Hello world. ~C" #\lower_half_block)
-                       relpos
-                       :fill-color *t-color*
-                       :font *ufont*)))
+    (gamekit:draw-text ;(format nil "Hello world. ~C" #\lower_half_block)
+     (format nil "Hello world.")
+     relpos
+     :fill-color *t-color*
+     ;; :font *ufont*
+     )))
+
+(defun draw-hex-grid ()
+  (let ((layout (make-instance 'hex-layout
+                               :orientation *flat-hex-layout*
+                               :size (vec2 10 10)
+                               :origin (vec2 10 10)))
+        (circle-map (make-circle-map 10)))
+    (dolist (c (grid-map-coords circle-map))
+      (gamekit:draw-polygon (coord-corners layout c)
+                            :fill-paint *white*
+                            :stroke-paint *black*
+                            :thickness 1.0))))
+
 
 (defun initialize-game ()
   (gamekit:start 'hello-gamekit))
@@ -95,12 +105,3 @@
 (defun process-mouse-move-event (x y)
   (when *mouse-down-p*
     (setf *current-box-position* (gamekit:vec2 x y))))
-
-
-
-
-
-
-
-
-
