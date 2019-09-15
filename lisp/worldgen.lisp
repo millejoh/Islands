@@ -1,6 +1,6 @@
 (in-package :islands)
 (named-readtables:in-readtable rutils-readtable)
-#{:a 1}
+
 (deftype climate (x)
   (member x '(:artic-alpine :cold :temperate :warm :tropical)))
 (deftype biome (b)
@@ -10,6 +10,38 @@
                :subtropical-desert :cold-desert :boreal-forest :hot-desert
                :savanna :tropical-dry-forest :tropical-evergreen-forest
                :thorn-forest :tropical-rain-forest :temperae-forest)))
+
+;; (defenum:defenum climate
+;;   (arctic-alpine
+;;    cold
+;;    temperate
+;;    warm
+;;    tropcial))
+
+;; (defenum:defenum biomes
+;;   (snow
+;;    tundra
+;;    bare
+;;    scorched
+;;    taiga
+;;    shrubland
+;;    grassland
+;;    temperate_desert
+;;    temperate_rain_forest
+;;    temperate_deciduous_forest
+;;    tropical_mountain_forest
+;;    tropical_seasonal_forest
+;;    subtropical_desert
+;;    cold_desert
+;;    boreal_forest
+;;    hot_desert
+;;    savanna
+;;    tropical_dry_forest
+;;    tropical_evergreen_forest
+;;    thorn_forest
+;;    tropical_rain_forest
+;;    temperate_forest
+;;    ))
 
 (defparameter *biome-colors* (make-hash-table))
 

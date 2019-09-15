@@ -1,5 +1,5 @@
 (in-package :islands)
-(named-readtables:in-readtable rutils:rutils-readtable)
+;; (named-readtables:in-readtable rutils:rutils-readtable)
 
 (defclass grid-map ()
   ((coords :accessor grid-map-coords)
@@ -203,9 +203,10 @@
 
 (defun make-circle-map (radius)
   (let ((m (make-instance 'grid-map)))
-    (dotimes (q radius m)
-      (let ((r1 (max (- radius) (- (- q) radius)))
-            (r2 (max radius (+ (- q) radius))))
-        (setf (grid-map-coords m)
-              (loop for r from r1 upto r2
-                    collecting (make-hex-coord-qr q r)))))))
+    (setf (grid-map-coords m)
+          (alexandria:flatten (loop for q from (- radius) upto radius by 1
+                                    collecting (let ((r1 (max (- radius) (- (- q) radius)))
+                                                     (r2 (min radius (+ (- q) radius))))
+                                                 (loop for r from r1 upto r2
+                                                       collecting (make-hex-coord-qrs q r (- (- q) r)))))))
+    m))
