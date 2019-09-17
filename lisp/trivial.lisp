@@ -7,9 +7,15 @@
 (defvar *origin* (gamekit:vec2 0 0))
 (defvar *current-box-position* (gamekit:vec2 0 0))
 (defvar *t-color* (gamekit:vec4 0 0 0 1))
+(defvar *hex-selection* nil)
 
 (gamekit:defgame islands ()
   ((frame-manager :accessor islands-frame-manager :initform (make-instance 'box.frame:frame-manager :vsync-p nil :delta (/ 1 30.0)))
+   (map :accessor islands-map :initform (make-circle-hex-map 10))
+   (layout :accessor islands-map-layout :initform (make-instance 'hex-layout
+                                                                 :orientation *flat-hex-layout*
+                                                                 :size (vec2 16 16)
+                                                                 :origin (vec2 200 200)))
    (world :accessor islands-world :initform (new-world 1000 1000)))
   (:viewport-width 800)
   (:viewport-height 600)
@@ -29,7 +35,7 @@
   (gamekit:bind-cursor (lambda (x y)
                          (process-mouse-move-event x y))))
 
-(defmethod gamekit:post-initialize ((game hello-gamekit))
+(defmethod gamekit:post-initialize ((game islands))
   (if *debug-frame-manager* (setf simple-logger:*current-level* :debug))
   (setf *game-manager* game)
   (prepare-resources)
@@ -65,33 +71,26 @@
         (impos (gamekit:add *current-box-position* (gamekit:vec2 5 (- 100 20)))))
     (gamekit:with-pushed-canvas ()
       (draw-sprite (animate-engineer (real-time-seconds)) impos))
-    ;; (gamekit:draw-image impos :engineer :width 16 :height 16)
     (gamekit:draw-text (format nil "Hello world! ~C" #\lower_half_block)
                        relpos
                        :fill-color *t-color*
-                       :font (font :unscii 10)))  )
+                       :font (font :unscii 10))
+    (gamekit:draw-text (format nil "Last mouse down pos: ~A" *current-box-position*)
+                       (gamekit:add relpos (vec2 0 15)))))
 
 (defmethod gamekit:draw ((app islands))
   (box.frame:tick (islands-frame-manager app) 60 #'world-update)
   (demo-draw-canvas app)
-  (draw-hex-grid)
+  (draw-hex-grid app)
   ;; (draw-world (islands-world app))
   )
 
 
 (defun world-update ()) ;; do nothing for now
 
-(defun draw-hex-grid ()
-  (let ((layout (make-instance 'hex-layout
-                               :orientation *flat-hex-layout*
-                               :size (vec2 16 16)
-                               :origin (vec2 300 300)))
-        (circle-map (make-circle-map 5)))
-    (dolist (c (grid-map-coords circle-map))
-      (gamekit:draw-polygon (coord-corners layout c)
-                            :fill-paint *white*
-                            :stroke-paint *black*
-                            :thickness 1.0))))
+(defun draw-hex-grid (app)
+  (with-slots (map layout) app
+    (draw-grid-with-layout map layout)))
 
 
 (defun initialize-game ()
@@ -112,8 +111,9 @@
 
 (defun process-mouse-down-event ()
   (setq *mouse-down-p* t)
-  (let ((gamekit (gamekit:gamekit)))
-    (setf *current-box-position* (slot-value gamekit 'gamekit::cursor-position))))
+  (with-slots (map layout (pos gamekit::cursor-position)) (gamekit:gamekit)
+    (setf *current-box-position* pos)
+    (setf *hex-selection* (map-cell map (pixel-to-coord layout pos)))))
 
 (defun process-mouse-up-event ()
   (setq *mouse-down-p* nil))

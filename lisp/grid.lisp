@@ -6,11 +6,15 @@
    (data :reader grid-data :initform (make-hash-table))))
 
 (defmethod map-cell ((m grid-map) coord)
-  (gethash (coord-hash coord) (grid-data m)))
+  (let ((coord_r (round-coord coord)))
+    (when (find coord_r (grid-map-coords m) :test #'coord-equal)
+      (gethash (coord-hash coord_r) (grid-data m)))))
 
 (defmethod set-map-cell ((m grid-map) coord value)
-  (setf (gethash (coord-hash coord) (grid-data m))
-        value))
+  (let ((coord_r (round-coord coord)))
+    (when (find coord_r (grid-map-coords m) :test #'coord-equal)
+      (setf (gethash (coord-hash coord_r) (grid-data m))
+            value))))
 
 
 
@@ -84,7 +88,7 @@
 (defun hex-distance (h1 h2)
   (hex-length (coord- h1 h2)))
 
-(defconstant +hex-directions+
+(defparameter +hex-directions+
   #((make-hex-coord-qrs 1 0 -1)
     (make-hex-coord-qrs 1 -1 0)
     (make-hex-coord-qrs 0 - 1 1)
@@ -176,14 +180,15 @@
       (vec2 (+ (x origin) px) (+ (y origin) py)))))
 
 (defmethod pixel-to-coord ((layout hex-layout) (pixel vec2))
-  (with-slots ((o orientation) size origin) layout
-    (let* ((pt (vec2 (/ (- (x pixel) (x origin)) (x size))
-                     (/ (- (y pixel) (y origin)) (y size))))
-           (q (+ (* (b0 o) (x pt))
-                  (* (b1 o) (y pt))))
-           (r (+ (* (b2 o) (x pt))
-                  (* (b3 o) (y pt)))))
-      (make-hex-coord-qr q r))))
+  (let ((pixel (flip-pixel-coord pixel)))
+    (with-slots ((o orientation) size origin) layout
+      (let* ((pt (vec2 (/ (- (x pixel) (x origin)) (x size))
+                       (/ (- (y pixel) (y origin)) (y size))))
+             (q (+ (* (b0 o) (x pt))
+                   (* (b1 o) (y pt))))
+             (r (+ (* (b2 o) (x pt))
+                   (* (b3 o) (y pt)))))
+        (make-hex-coord-qr q r)))))
 
 (defun hex-corner-offset (layout corner)
   (with-slots (size (o orientation)) layout
@@ -198,10 +203,13 @@
           collecting (let ((offset (hex-corner-offset layout i)))
                        (add center offset)))))
 
+(defmethod flip-pixel-coord ((pixel vec2))
+  (vec2 (x pixel)
+        (- (gamekit:viewport-height) (y pixel))))
 
 ;;; Various map shapes
 
-(defun make-circle-map (radius)
+(defun make-circle-hex-map (radius)
   (let ((m (make-instance 'grid-map)))
     (setf (grid-map-coords m)
           (alexandria:flatten (loop for q from (- radius) upto radius by 1
@@ -210,3 +218,12 @@
                                                  (loop for r from r1 upto r2
                                                        collecting (make-hex-coord-qrs q r (- (- q) r)))))))
     m))
+
+;;; Drawing Maps/Layouts
+
+(defmethod draw-grid-with-layout (map (layout hex-layout))
+  (dolist (c (grid-map-coords map))
+    (gamekit:draw-polygon (coord-corners layout c)
+                          :fill-paint *white*
+                          :stroke-paint *black*
+                          :thickness 1.0)) )
