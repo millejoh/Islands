@@ -4,13 +4,18 @@ import tcod
 from tdl.noise import Noise
 import numpy as np
 from numbers import Number
+from numba import jitclass
+from numba import float32
 
-#from numba import jit
+spec = [
+    ('_data', float32[:]),
+]
 
+@jitclass(spec)
 class Heightmap(object):
     def __init__(self, width, height):
         ""
-        self._data = tcod.heightmap_new(width, height)
+        self._data = np.zeros((height, width), np.float32, order="C")
 
     @property
     def width(self):
@@ -21,7 +26,7 @@ class Heightmap(object):
         return np.shape(self._data)[1]
 
     def __getitem__(self, index):
-        # Bounds checking?
+        # Bounds checking? Slices?
         x, y = index
         assert x < self.width and y < self.height
         if type(x) is float and type(y) is float:
@@ -154,5 +159,3 @@ class Heightmap(object):
 
     def __repr__(self):
         return 'Heightmap({}, {})'.format(self.width, self.height)
-
-

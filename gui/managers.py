@@ -280,39 +280,64 @@ class GuiEventLoop(BasicEventLoop):
                                                               mouse_state=mouse_event))
 
 
+    def ev_mousemotion(self, mouse):
+        self.mouse_x, self.mouse_y = mouse.pixel[0], mouse.pixel[1]
+        wm.focus_changed = self.window_with_mouse_focus() != wm.last_topwin
+        self.send_mouse_move_event(self.window_with_mouse_focus(), mouse)
+
+
+    def ev_mousebuttonevent(self, mouse):
+        self.mouse_x, self.mouse_y = mouse.pixel[0], mouse.pixel[1]
+        wm.topwin = self.window_with_mouse_focus()
+        wm.focus_changed = wm.topwin != wm.last_topwin
+        self.send_mouse_click_event(wm.topwin, mouse)
+        if mouse.type == "MOUSEBUTTONDOWN" and mouse.state == tcod.event.BUTTON_LEFT:
+            wm.topwin.raise_window(redraw=self.window_manager.auto_redraw)
+            self.handle_drag_event(self.current_event)
+
+    def ev_keyboardevent(self, key):
+        wm.topwin = self.window_with_key_focus()
+        if wm.topwin:
+            self.send_key_event(wm.topwin, key,
+                                self.mouse_x - wm.topwin.tlx,
+                                self.mouse_y - wm.topwin.tly)
+
     def step(self, root):
         wm = self.window_manager
         self.current_mouse_event = tcod.mouse_get_status()
         wm.focus_changed = False
-        self.poll_for_event(tcod.EVENT_ANY)
-        event_type = type(self.current_event)
-        # for (event_type, event) in events:
-        if issubclass(event_type, MouseEvent):
-            mouse = self.current_event
-            self.mouse_x, self.mouse_y = mouse.state.cx, mouse.state.cy
-            if event_type is MouseMoveEvent:
-                wm.focus_changed = self.window_with_mouse_focus() != wm.last_topwin
-                self.send_mouse_move_event(self.window_with_mouse_focus(), mouse)
-            elif event_type in (MousePressEvent, MouseReleaseEvent):
-                wm.topwin = self.window_with_mouse_focus()
-                wm.focus_changed = wm.topwin != wm.last_topwin
-                self.send_mouse_click_event(wm.topwin, mouse)
-        elif issubclass(event_type, KeyEvent):
-            wm.topwin = self.window_with_key_focus()
-            if wm.topwin:
-                self.send_key_event(wm.topwin, self.current_event,
-                                    self.mouse_x - wm.topwin.tlx,
-                                    self.mouse_y - wm.topwin.tly)
-        # That's done, now look at the state of the mouse
-        if self.current_mouse_event and self.current_mouse_event.lbutton and \
-                wm.topwin and not wm.topwin.hidden_p:
-            wm.topwin.raise_window(redraw=self.window_manager.auto_redraw)
-            self.handle_drag_event(self.current_event)
+        for event in tcod.event.get():
+            self.current_event = event
+            self.dispatch(event)
+            # # self.poll_for_events()
+            # event_type = type(self.current_event)
+            # # for (event_type, event) in events:
+            # if issubclass(event_type, MouseEvent):
+            #     mouse = self.current_event
+            #     self.mouse_x, self.mouse_y = mouse.state.cx, mouse.state.cy
+            #     if event_type is MouseMoveEvent:
+            #         wm.focus_changed = self.window_with_mouse_focus() != wm.last_topwin
+            #         self.send_mouse_move_event(self.window_with_mouse_focus(), mouse)
+            #     elif event_type in (MousePressEvent, MouseReleaseEvent):
+            #         wm.topwin = self.window_with_mouse_focus()
+            #         wm.focus_changed = wm.topwin != wm.last_topwin
+            #         self.send_mouse_click_event(wm.topwin, mouse)
+            # elif issubclass(event_type, KeyEvent):
+            #     wm.topwin = self.window_with_key_focus()
+            #     if wm.topwin:
+            #         self.send_key_event(wm.topwin, self.current_event,
+            #                             self.mouse_x - wm.topwin.tlx,
+            #                             self.mouse_y - wm.topwin.tly)
+            #         # That's done, now look at the state of the mouse
+            # if self.current_mouse_event and self.current_mouse_event.lbutton and \
+            # wm.topwin and not wm.topwin.hidden_p:
+            #     wm.topwin.raise_window(redraw=self.window_manager.auto_redraw)
+            #     self.handle_drag_event(self.current_event)
 
-        if wm.focus_changed:
-            wm.last_topwin = wm.topwin
+            if wm.focus_changed:
+                wm.last_topwin = wm.topwin
 
-        wm.process_windows()
+            wm.process_windows()
 
 if support_ipy:
     @register_integration('tcod_gui')

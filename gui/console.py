@@ -3,7 +3,7 @@ from threading import Thread
 from collections import namedtuple
 import numpy as np
 import tcod
-import gui.color
+import gui.color as color
 from gui.string import make_colored_string
 from .gameclock import GameClock
 

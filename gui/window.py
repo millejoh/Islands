@@ -151,17 +151,18 @@ class Window(tc.Console):
             if self not in self.wmanager.hidden_window_stack:
                 self.wmanager.hidden_window_stack.insert(0, self)
 
-    def unhide(self, redraw):
-        if not redraw:
-            redraw = self.wmanager.auto_redraw
-        self.hidden_p = False
-        self.wmanager.hidden_window_stack.remove(self)
-        self.wmanager.window_stack.insert(0, self)
-        if redraw:
-            self.redraw_area(draw_window=True)
-        if self.raise_children_with_parent_p and self.children:
-            for win in self.children:
-                win.unhide()
+    def unhide(self, redraw=True):
+        if self in self.wmanager.hidden_window_stack:
+            if not redraw:
+                redraw = self.wmanager.auto_redraw
+            self.hidden_p = False
+            self.wmanager.hidden_window_stack.remove(self)
+            self.wmanager.window_stack.insert(0, self)
+            if redraw:
+                self.redraw_area(draw_window=True)
+            if self.raise_children_with_parent_p and self.children:
+                for win in self.children:
+                    win.unhide()
 
     def window_did_change(self):
         self.changed_p = True
@@ -670,7 +671,7 @@ class LogWindow(ListWindow):
             self.add_item(msg, msg)
         self.move_cursor_to_end()
         self.window_did_change()
-        
+
 class WindowTheme(object):
     def __init__(self, fore, back, fore_highlight, back_highlight,
                  dialog_button_fore, dialog_button_back,
