@@ -63,6 +63,16 @@ class WorldView(Viewport):
         super().__init__(**keys)
         self.world_factory = WorldGenerator(self.map_width, self.map_height)
         self.needs_redraw = True
+        self.seed_numba()
+
+    def seed_numba(self):
+        wg = WorldGenerator(10, 10)
+        wg.build_base_map(10)
+        wg.compute_precipitation()
+        wg.erode_map()
+        wg.smooth_map()
+        wg.set_land_mass(0.6, SAND_HEIGHT)
+        wg.smooth_precipitations()
 
     @property
     def elevation(self):
@@ -177,4 +187,3 @@ if __name__ == '__main__':
     game.run()
     #demo = make_demo()
     #demo.run()
-

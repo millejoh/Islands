@@ -5,7 +5,7 @@ import re
 from collections import namedtuple
 
 import tcod
-from color import decompose_color, string_to_colornum
+from gui.color import decompose_color, Color
 
 
 TEXT = r'(?P<TEXT>[^{}]+)'
@@ -24,7 +24,6 @@ color_pat = re.compile('|'.join([FG_COLOR, BG_COLOR, COLOR]))
 
 Token = namedtuple('Token', ['type', 'value'])
 
-
 def next_token(text, pat=master_pat):
     scanner = pat.scanner(text)
     for m in iter(scanner.match, None):
@@ -33,13 +32,13 @@ def next_token(text, pat=master_pat):
 def process_color_directive(fmt):
     toks = [tok for tok in next_token(fmt[1:-1], color_pat)]
     if toks[0].type == 'FG_COLOR':
-        return color_to_control_string(string_to_colornum(toks[1].value),
+        return color_to_control_string(Color(toks[1].value),
                                        False)
     elif toks[0].type == 'BG_COLOR':
-        return color_to_control_string(string_to_colornum(toks[1].value),
+        return color_to_control_string(Color(toks[1].value),
                                        True)
     else:
-        return color_to_control_string(string_to_colornum(toks[0].value),
+        return color_to_control_string(Color(toks[0].value),
                                        False)
 
 
