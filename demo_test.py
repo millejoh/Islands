@@ -63,7 +63,6 @@ class WorldView(Viewport):
         super().__init__(**keys)
         self.world_factory = WorldGenerator(self.map_width, self.map_height)
         self.needs_redraw = True
-        self.seed_numba()
 
     def seed_numba(self):
         wg = WorldGenerator(10, 10)

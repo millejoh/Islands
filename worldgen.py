@@ -2,7 +2,6 @@
 import math
 import numpy as np
 import random
-import noise
 import tcod
 import attr
 from tcod import Color
@@ -396,7 +395,7 @@ class WorldGenerator(object):
             ih - altIndexes[i0]) / (altIndexes[i1] - altIndexes[i0])
 
     def precipitation(self, x, y):
-        iprec = clamp(0, 255, 256 * (self._precipitation[x, y])
+        iprec = clamp(0, 255, 256 * (self._precipitation[y, x])
                       )  # tcod.heightmap_get_value(self._precipitation, x,y)))
         (i0, i1) = find_index(precIndexes, iprec)
 
@@ -407,7 +406,7 @@ class WorldGenerator(object):
         return self._hm_temperature[y, x]
 
     def biome(self, x, y):
-        return self._biome_map[int(x), int(x)]
+        return self._biome_map[int(y), int(x)]
 
     # def interpolated_normal(self, x, y):
     #     return self._hm2.normal(x, y, SAND_HEIGHT)
@@ -512,9 +511,9 @@ class WorldGenerator(object):
                         water_amount += water_add
                     elif water_amount > 0.0:
                         if (y + dir_y) < self.height:
-                            slope = self._hm[x, y + dir_y] - h
+                            slope = self._hm[y + dir_y, x] - h
                         else:
-                            slope = h - self._hm[x, y - dir_y]
+                            slope = h - self._hm[y - dir_y, x]
                         if slope >= 0:
                             precip = water_amount * (base_precip +
                                                      slope * slope_coef)
@@ -535,10 +534,10 @@ class WorldGenerator(object):
                     if x < SAND_HEIGHT:
                         water_amount += water_add
                     elif water_amount > 0.0:
-                        if (x + dir_x) < self.height:
-                            slope = self._hm[x + dir_x, y] - h
+                        if (x + dir_x) < self.width:
+                            slope = self._hm[y, x + dir_x] - h
                         else:
-                            slope = h - self._hm[x - dir_x, y]
+                            slope = h - self._hm[y, x - dir_x]
                         if slope >= 0:
                             precip = water_amount * (base_precip +
                                                      slope * slope_coef)
@@ -599,8 +598,7 @@ class WorldGenerator(object):
                                 max_dir = i
                     md.flow_dir = min_dir
                     md.up_dir = max_dir
-                    md.slope = (hmin -
-                                h) * dircoef[min_dir]  # Is (hmin-h) only once?
+                    md.slope = (hmin - h) * dircoef[min_dir]  # Is (hmin-h) only once?
 
             for y in range(self.height):
                 for x in range(self.width):
@@ -608,7 +606,7 @@ class WorldGenerator(object):
                     md2 = self.map_data[y, x]
                     sediment, end, ix, iy, old_flow = 0, False, x, y, md.flow_dir
                     while not end:
-                        h = self._hm[ix, iy]
+                        h = self._hm[iy, ix]
                         if h < (SAND_HEIGHT - 0.01):
                             break
                         if md2.flow_dir == oppdir[old_flow]:
@@ -697,7 +695,7 @@ class WorldGenerator(object):
         # Pick a random point near the coast
         sx = random.randint(0, self.width)
         sy = random.randint(self.height / 5, 4 * self.height / 5)
-        h = self._hm[sx, sy]
+        h = self._hm[sy, sx]
         while (h < SAND_HEIGHT - 0.02) or (h >= SAND_HEIGHT):
             sx += 1
             if sx == self.width:
@@ -705,7 +703,7 @@ class WorldGenerator(object):
                 sy += 1
                 if sy == self.height:
                     sy = 0
-            h = self._hm[sx, sy]
+            h = self._hm[sy, s]
 
         tree, rand_pt = [], []
         tree.insert(0, (sx, sy))
@@ -729,10 +727,10 @@ class WorldGenerator(object):
             if md.river_id == river_id:
                 md.river_id = 0
             while len > 0:
-                md = self.map_data[cx, cy]
+                md = self.map_data[cy, cx]
                 if md.river_id > 0:
                     break
-                h = self._hm[cx, cy]
+                h = self._hm[cy, c]
                 if h >= SAND_HEIGHT:
                     md.river_id = river_id
                     self._precipitation[cx, cy] = 1.0

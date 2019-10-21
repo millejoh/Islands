@@ -176,10 +176,10 @@ class Window(tc.Console):
     def dirty_window(self):
         tlx, tly = self.tlx, self.tly
         w, h = self.width, self.height
-        tcod.console_set_dirty(utils.clamp(0, (tc.R.screen_width() - 1), tlx),
-                               utils.clamp(0, (tc.R.screen_height() - 1), tly),
-                               utils.clamp(0, (tc.R.screen_width() - tlx), w),
-                               utils.clamp(0, (tc.R.screen_height() - tly), h))
+        tcod.loader.lib.TCOD_console_set_dirty(utils.clamp(0, (tc.R.screen_width() - 1), tlx),
+                                               utils.clamp(0, (tc.R.screen_height() - 1), tly),
+                                               utils.clamp(0, (tc.R.screen_width() - tlx), w),
+                                               utils.clamp(0, (tc.R.screen_height() - tly), h))
 
     def destroy(self):
         """Destroy the window object, hiding it first if it is not already
