@@ -15,11 +15,8 @@ from numba import int32, float32, void
 noise1d = tcod.noise_new(1)  # noise.NoiseGenerator(1)
 noise2d = tcod.noise_new(2)  # noise.NoiseGenerator(2)
 
-math.pi
-
 # Height and Biome Constants
 # --------------------------
-
 
 class Climate(Enum):
     arctic_alpine = 0
