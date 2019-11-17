@@ -807,7 +807,11 @@ class WorldGenerator(object):
         return Color(r, g, b)
 
     def compute_colors(self):
-        pass
+        for y in range(self.height):
+            for x in range(self.width):
+                h = self.altitude(x, y)
+                temp = self.temperature(x, y)
+                biome = self.biome(x, y)
 
 
 # Tests
