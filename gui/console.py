@@ -290,8 +290,8 @@ class Console(object):
 
         """
 
-        tcod.console_print_double_frame(self._c, x, y, width, height, clear,
-                                        flag, fmt)
+        tcod.lib.TCOD_console_print_double_frame(self._c.console_c, x, y, width, height, clear,
+                                                 flag, fmt)
 
     def print_frame(self, x, y, width, height, clear=True,
                     flag=tcod.BKGND_DEFAULT, fmt=0):

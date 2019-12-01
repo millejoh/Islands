@@ -3,7 +3,6 @@
 
 * References
 - [[https://github.com/vseloved/rutils/blob/master/docs/tutorial.md][rutils]]
--
 
 
 * The Constraints
@@ -51,6 +50,945 @@ and ~bind-cursor~ but responsiveness is slow for dragging.
 Based on python-tcod, inspired by dormouse.
 
 
+
+
+* Documenting Python Dormouse
+
+gui.managers.GuiEventLoop vs gui.managers.WindowManager:
+
+
+
+* The Main Event Loop
+[[file:demo_test.py::__author__%20=%20'millejoh'][demo_test.py]] is an early demonstration of using my Python port of dormouse to
+create an application. What is missing:
+
+ 1. Truly responding to events (both mouse keyboard).
+ 2. Update loops for animation/ai/world state (do all these need to be distinct?).
+ 3. More sophisticated UI - i.e. screen partitioning and windows for messages/information.
+ 4. Integration with IPython.
+
+Lets focus on #4 and build a sample application that integrates with IPython.
+
+#+NAME: 17150a98-5a72-4bbb-a10f-e74261c71c0e
+#+BEGIN_SRC ein-python :session http://localhost:8888/Islands_tcod.ipynb :results drawer
+  import tcod
+  import tcod.event
+  from gui.managers import GUIEventLoop, WindowManager
+  from gui.window import Window, ListWindow
+  from ipykernel.kernelbase import Kernel
+  import time
+
+  class DemoGuiGame(GUIEventLoop):
+      def initialize(self):
+          self.w1 = Window(5, 5, 15, 15, title='Window 1', framed=True, window_manager=self.window_manager)
+          self.w2 = Window(10, 10, 20, 30, title='Window 2', framed=True, window_manager=self.window_manager)
+          self.list_view = ListWindow(tlx=15, tly=15, width=20, height=5, title='List Window', framed=True,
+                                      window_manager=self.window_manager)
+          self.list_view.add_item('An item.', 'An item.')
+          self.list_view.add_item('Another item.', 'Uhuh.')
+          self.list_view.add_item('Keep going.', 'Number.')
+          self.list_view.add_item('Scrolling yet?', 'Scroll')
+          self.list_view.add_item('last one', 'the end.')
+          self.ipy_poll = time.monotonic()
+
+      def print_debug_info(self):
+          fps = tcod.sys_get_fps()
+          root = self.window_manager.rootc
+          root.write(0, 0, "Time elapsed = {0}".format(time.monotonic()))
+          root.write(0, 1, "FPS = {0}".format(fps))
+          root.write(0, 2, "Current event = {0}.".format(self.current_event))
+
+      def step(self, root):
+          start = time.monotonic()
+          if self.current_event:
+              if self.current_event.type == "QUIT" or \
+                 (self.current_event.type == "KEYDOWN" and self.current_event.sym == tcod.event.K_ESCAPE):
+                  self.end_game = True
+          super().step(root)
+          self.print_debug_info()
+          # self.game_step()
+          end = time.monotonic()
+
+
+  wm = WindowManager(80, 60)
+  kernel = Kernel()
+  demo = DemoGuiGame(window_manager=wm, ipykernel=kernel)
+  demo.initialize()
+  demo.run()
+#+END_SRC
+
+#+RESULTS: 17150a98-5a72-4bbb-a10f-e74261c71c0e
+:results:
+Future exception was never retrieved
+future: <Future finished exception=AttributeError("'Kernel' object has no attribute 'msg_queue'")>
+Traceback (most recent call last):
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 742, in run
+    yielded = self.gen.throw(*exc_info)  # type: ignore
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 345, in do_one_iteration
+    priority = yield self.process_one(wait=False)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 735, in run
+    value = future.result()
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 209, in wrapper
+    yielded = next(result)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 358, in process_one
+    priority, t, dispatch, args = self.msg_queue.get_nowait()
+AttributeError: 'Kernel' object has no attribute 'msg_queue'
+
+Future exception was never retrieved
+future: <Future finished exception=AttributeError("'Kernel' object has no attribute 'msg_queue'")>
+Traceback (most recent call last):
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 742, in run
+    yielded = self.gen.throw(*exc_info)  # type: ignore
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 345, in do_one_iteration
+    priority = yield self.process_one(wait=False)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 735, in run
+    value = future.result()
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 209, in wrapper
+    yielded = next(result)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 358, in process_one
+    priority, t, dispatch, args = self.msg_queue.get_nowait()
+AttributeError: 'Kernel' object has no attribute 'msg_queue'
+
+Future exception was never retrieved
+future: <Future finished exception=AttributeError("'Kernel' object has no attribute 'msg_queue'")>
+Traceback (most recent call last):
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 742, in run
+    yielded = self.gen.throw(*exc_info)  # type: ignore
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 345, in do_one_iteration
+    priority = yield self.process_one(wait=False)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 735, in run
+    value = future.result()
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 209, in wrapper
+    yielded = next(result)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 358, in process_one
+    priority, t, dispatch, args = self.msg_queue.get_nowait()
+AttributeError: 'Kernel' object has no attribute 'msg_queue'
+
+Future exception was never retrieved
+future: <Future finished exception=AttributeError("'Kernel' object has no attribute 'msg_queue'")>
+Traceback (most recent call last):
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 742, in run
+    yielded = self.gen.throw(*exc_info)  # type: ignore
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 345, in do_one_iteration
+    priority = yield self.process_one(wait=False)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 735, in run
+    value = future.result()
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 209, in wrapper
+    yielded = next(result)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 358, in process_one
+    priority, t, dispatch, args = self.msg_queue.get_nowait()
+AttributeError: 'Kernel' object has no attribute 'msg_queue'
+
+Future exception was never retrieved
+future: <Future finished exception=AttributeError("'Kernel' object has no attribute 'msg_queue'")>
+Traceback (most recent call last):
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 742, in run
+    yielded = self.gen.throw(*exc_info)  # type: ignore
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 345, in do_one_iteration
+    priority = yield self.process_one(wait=False)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 735, in run
+    value = future.result()
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 209, in wrapper
+    yielded = next(result)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 358, in process_one
+    priority, t, dispatch, args = self.msg_queue.get_nowait()
+AttributeError: 'Kernel' object has no attribute 'msg_queue'
+
+Future exception was never retrieved
+future: <Future finished exception=AttributeError("'Kernel' object has no attribute 'msg_queue'")>
+Traceback (most recent call last):
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 742, in run
+    yielded = self.gen.throw(*exc_info)  # type: ignore
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 345, in do_one_iteration
+    priority = yield self.process_one(wait=False)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 735, in run
+    value = future.result()
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 209, in wrapper
+    yielded = next(result)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 358, in process_one
+    priority, t, dispatch, args = self.msg_queue.get_nowait()
+AttributeError: 'Kernel' object has no attribute 'msg_queue'
+
+Future exception was never retrieved
+future: <Future finished exception=AttributeError("'Kernel' object has no attribute 'msg_queue'")>
+Traceback (most recent call last):
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 742, in run
+    yielded = self.gen.throw(*exc_info)  # type: ignore
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 345, in do_one_iteration
+    priority = yield self.process_one(wait=False)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 735, in run
+    value = future.result()
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 209, in wrapper
+    yielded = next(result)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 358, in process_one
+    priority, t, dispatch, args = self.msg_queue.get_nowait()
+AttributeError: 'Kernel' object has no attribute 'msg_queue'
+
+Future exception was never retrieved
+future: <Future finished exception=AttributeError("'Kernel' object has no attribute 'msg_queue'")>
+Traceback (most recent call last):
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 742, in run
+    yielded = self.gen.throw(*exc_info)  # type: ignore
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 345, in do_one_iteration
+    priority = yield self.process_one(wait=False)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 735, in run
+    value = future.result()
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 209, in wrapper
+    yielded = next(result)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 358, in process_one
+    priority, t, dispatch, args = self.msg_queue.get_nowait()
+AttributeError: 'Kernel' object has no attribute 'msg_queue'
+
+Future exception was never retrieved
+future: <Future finished exception=AttributeError("'Kernel' object has no attribute 'msg_queue'")>
+Traceback (most recent call last):
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 742, in run
+    yielded = self.gen.throw(*exc_info)  # type: ignore
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 345, in do_one_iteration
+    priority = yield self.process_one(wait=False)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 735, in run
+    value = future.result()
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 209, in wrapper
+    yielded = next(result)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 358, in process_one
+    priority, t, dispatch, args = self.msg_queue.get_nowait()
+AttributeError: 'Kernel' object has no attribute 'msg_queue'
+
+Future exception was never retrieved
+future: <Future finished exception=AttributeError("'Kernel' object has no attribute 'msg_queue'")>
+Traceback (most recent call last):
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 742, in run
+    yielded = self.gen.throw(*exc_info)  # type: ignore
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 345, in do_one_iteration
+    priority = yield self.process_one(wait=False)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 735, in run
+    value = future.result()
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 209, in wrapper
+    yielded = next(result)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 358, in process_one
+    priority, t, dispatch, args = self.msg_queue.get_nowait()
+AttributeError: 'Kernel' object has no attribute 'msg_queue'
+
+Future exception was never retrieved
+future: <Future finished exception=AttributeError("'Kernel' object has no attribute 'msg_queue'")>
+Traceback (most recent call last):
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 742, in run
+    yielded = self.gen.throw(*exc_info)  # type: ignore
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 345, in do_one_iteration
+    priority = yield self.process_one(wait=False)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 735, in run
+    value = future.result()
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 209, in wrapper
+    yielded = next(result)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 358, in process_one
+    priority, t, dispatch, args = self.msg_queue.get_nowait()
+AttributeError: 'Kernel' object has no attribute 'msg_queue'
+
+Future exception was never retrieved
+future: <Future finished exception=AttributeError("'Kernel' object has no attribute 'msg_queue'")>
+Traceback (most recent call last):
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 742, in run
+    yielded = self.gen.throw(*exc_info)  # type: ignore
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 345, in do_one_iteration
+    priority = yield self.process_one(wait=False)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 735, in run
+    value = future.result()
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 209, in wrapper
+    yielded = next(result)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 358, in process_one
+    priority, t, dispatch, args = self.msg_queue.get_nowait()
+AttributeError: 'Kernel' object has no attribute 'msg_queue'
+
+Future exception was never retrieved
+future: <Future finished exception=AttributeError("'Kernel' object has no attribute 'msg_queue'")>
+Traceback (most recent call last):
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 742, in run
+    yielded = self.gen.throw(*exc_info)  # type: ignore
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 345, in do_one_iteration
+    priority = yield self.process_one(wait=False)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 735, in run
+    value = future.result()
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 209, in wrapper
+    yielded = next(result)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 358, in process_one
+    priority, t, dispatch, args = self.msg_queue.get_nowait()
+AttributeError: 'Kernel' object has no attribute 'msg_queue'
+
+Future exception was never retrieved
+future: <Future finished exception=AttributeError("'Kernel' object has no attribute 'msg_queue'")>
+Traceback (most recent call last):
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 742, in run
+    yielded = self.gen.throw(*exc_info)  # type: ignore
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 345, in do_one_iteration
+    priority = yield self.process_one(wait=False)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 735, in run
+    value = future.result()
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 209, in wrapper
+    yielded = next(result)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 358, in process_one
+    priority, t, dispatch, args = self.msg_queue.get_nowait()
+AttributeError: 'Kernel' object has no attribute 'msg_queue'
+
+Future exception was never retrieved
+future: <Future finished exception=AttributeError("'Kernel' object has no attribute 'msg_queue'")>
+Traceback (most recent call last):
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 742, in run
+    yielded = self.gen.throw(*exc_info)  # type: ignore
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 345, in do_one_iteration
+    priority = yield self.process_one(wait=False)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 735, in run
+    value = future.result()
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 209, in wrapper
+    yielded = next(result)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 358, in process_one
+    priority, t, dispatch, args = self.msg_queue.get_nowait()
+AttributeError: 'Kernel' object has no attribute 'msg_queue'
+
+Future exception was never retrieved
+future: <Future finished exception=AttributeError("'Kernel' object has no attribute 'msg_queue'")>
+Traceback (most recent call last):
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 742, in run
+    yielded = self.gen.throw(*exc_info)  # type: ignore
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 345, in do_one_iteration
+    priority = yield self.process_one(wait=False)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 735, in run
+    value = future.result()
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 209, in wrapper
+    yielded = next(result)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 358, in process_one
+    priority, t, dispatch, args = self.msg_queue.get_nowait()
+AttributeError: 'Kernel' object has no attribute 'msg_queue'
+
+Future exception was never retrieved
+future: <Future finished exception=AttributeError("'Kernel' object has no attribute 'msg_queue'")>
+Traceback (most recent call last):
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 742, in run
+    yielded = self.gen.throw(*exc_info)  # type: ignore
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 345, in do_one_iteration
+    priority = yield self.process_one(wait=False)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 735, in run
+    value = future.result()
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 209, in wrapper
+    yielded = next(result)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 358, in process_one
+    priority, t, dispatch, args = self.msg_queue.get_nowait()
+AttributeError: 'Kernel' object has no attribute 'msg_queue'
+
+Future exception was never retrieved
+future: <Future finished exception=AttributeError("'Kernel' object has no attribute 'msg_queue'")>
+Traceback (most recent call last):
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 742, in run
+    yielded = self.gen.throw(*exc_info)  # type: ignore
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 345, in do_one_iteration
+    priority = yield self.process_one(wait=False)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 735, in run
+    value = future.result()
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 209, in wrapper
+    yielded = next(result)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 358, in process_one
+    priority, t, dispatch, args = self.msg_queue.get_nowait()
+AttributeError: 'Kernel' object has no attribute 'msg_queue'
+
+Future exception was never retrieved
+future: <Future finished exception=AttributeError("'Kernel' object has no attribute 'msg_queue'")>
+Traceback (most recent call last):
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 742, in run
+    yielded = self.gen.throw(*exc_info)  # type: ignore
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 345, in do_one_iteration
+    priority = yield self.process_one(wait=False)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 735, in run
+    value = future.result()
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 209, in wrapper
+    yielded = next(result)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 358, in process_one
+    priority, t, dispatch, args = self.msg_queue.get_nowait()
+AttributeError: 'Kernel' object has no attribute 'msg_queue'
+
+Future exception was never retrieved
+future: <Future finished exception=AttributeError("'Kernel' object has no attribute 'msg_queue'")>
+Traceback (most recent call last):
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 742, in run
+    yielded = self.gen.throw(*exc_info)  # type: ignore
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 345, in do_one_iteration
+    priority = yield self.process_one(wait=False)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 735, in run
+    value = future.result()
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 209, in wrapper
+    yielded = next(result)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 358, in process_one
+    priority, t, dispatch, args = self.msg_queue.get_nowait()
+AttributeError: 'Kernel' object has no attribute 'msg_queue'
+
+Future exception was never retrieved
+future: <Future finished exception=AttributeError("'Kernel' object has no attribute 'msg_queue'")>
+Traceback (most recent call last):
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 742, in run
+    yielded = self.gen.throw(*exc_info)  # type: ignore
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 345, in do_one_iteration
+    priority = yield self.process_one(wait=False)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 735, in run
+    value = future.result()
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 209, in wrapper
+    yielded = next(result)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 358, in process_one
+    priority, t, dispatch, args = self.msg_queue.get_nowait()
+AttributeError: 'Kernel' object has no attribute 'msg_queue'
+
+Future exception was never retrieved
+future: <Future finished exception=AttributeError("'Kernel' object has no attribute 'msg_queue'")>
+Traceback (most recent call last):
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 742, in run
+    yielded = self.gen.throw(*exc_info)  # type: ignore
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 345, in do_one_iteration
+    priority = yield self.process_one(wait=False)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 735, in run
+    value = future.result()
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 209, in wrapper
+    yielded = next(result)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 358, in process_one
+    priority, t, dispatch, args = self.msg_queue.get_nowait()
+AttributeError: 'Kernel' object has no attribute 'msg_queue'
+
+Future exception was never retrieved
+future: <Future finished exception=AttributeError("'Kernel' object has no attribute 'msg_queue'")>
+Traceback (most recent call last):
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 742, in run
+    yielded = self.gen.throw(*exc_info)  # type: ignore
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 345, in do_one_iteration
+    priority = yield self.process_one(wait=False)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 735, in run
+    value = future.result()
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 209, in wrapper
+    yielded = next(result)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 358, in process_one
+    priority, t, dispatch, args = self.msg_queue.get_nowait()
+AttributeError: 'Kernel' object has no attribute 'msg_queue'
+
+Future exception was never retrieved
+future: <Future finished exception=AttributeError("'Kernel' object has no attribute 'msg_queue'")>
+Traceback (most recent call last):
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 742, in run
+    yielded = self.gen.throw(*exc_info)  # type: ignore
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 345, in do_one_iteration
+    priority = yield self.process_one(wait=False)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 735, in run
+    value = future.result()
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 209, in wrapper
+    yielded = next(result)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 358, in process_one
+    priority, t, dispatch, args = self.msg_queue.get_nowait()
+AttributeError: 'Kernel' object has no attribute 'msg_queue'
+
+Future exception was never retrieved
+future: <Future finished exception=AttributeError("'Kernel' object has no attribute 'msg_queue'")>
+Traceback (most recent call last):
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 742, in run
+    yielded = self.gen.throw(*exc_info)  # type: ignore
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 345, in do_one_iteration
+    priority = yield self.process_one(wait=False)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 735, in run
+    value = future.result()
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 209, in wrapper
+    yielded = next(result)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 358, in process_one
+    priority, t, dispatch, args = self.msg_queue.get_nowait()
+AttributeError: 'Kernel' object has no attribute 'msg_queue'
+
+Future exception was never retrieved
+future: <Future finished exception=AttributeError("'Kernel' object has no attribute 'msg_queue'")>
+Traceback (most recent call last):
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 742, in run
+    yielded = self.gen.throw(*exc_info)  # type: ignore
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 345, in do_one_iteration
+    priority = yield self.process_one(wait=False)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 735, in run
+    value = future.result()
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 209, in wrapper
+    yielded = next(result)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 358, in process_one
+    priority, t, dispatch, args = self.msg_queue.get_nowait()
+AttributeError: 'Kernel' object has no attribute 'msg_queue'
+
+Future exception was never retrieved
+future: <Future finished exception=AttributeError("'Kernel' object has no attribute 'msg_queue'")>
+Traceback (most recent call last):
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 742, in run
+    yielded = self.gen.throw(*exc_info)  # type: ignore
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 345, in do_one_iteration
+    priority = yield self.process_one(wait=False)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 735, in run
+    value = future.result()
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 209, in wrapper
+    yielded = next(result)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 358, in process_one
+    priority, t, dispatch, args = self.msg_queue.get_nowait()
+AttributeError: 'Kernel' object has no attribute 'msg_queue'
+
+Future exception was never retrieved
+future: <Future finished exception=AttributeError("'Kernel' object has no attribute 'msg_queue'")>
+Traceback (most recent call last):
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 742, in run
+    yielded = self.gen.throw(*exc_info)  # type: ignore
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 345, in do_one_iteration
+    priority = yield self.process_one(wait=False)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 735, in run
+    value = future.result()
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 209, in wrapper
+    yielded = next(result)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 358, in process_one
+    priority, t, dispatch, args = self.msg_queue.get_nowait()
+AttributeError: 'Kernel' object has no attribute 'msg_queue'
+
+Future exception was never retrieved
+future: <Future finished exception=AttributeError("'Kernel' object has no attribute 'msg_queue'")>
+Traceback (most recent call last):
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 742, in run
+    yielded = self.gen.throw(*exc_info)  # type: ignore
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 345, in do_one_iteration
+    priority = yield self.process_one(wait=False)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 735, in run
+    value = future.result()
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 209, in wrapper
+    yielded = next(result)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 358, in process_one
+    priority, t, dispatch, args = self.msg_queue.get_nowait()
+AttributeError: 'Kernel' object has no attribute 'msg_queue'
+
+Future exception was never retrieved
+future: <Future finished exception=AttributeError("'Kernel' object has no attribute 'msg_queue'")>
+Traceback (most recent call last):
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 742, in run
+    yielded = self.gen.throw(*exc_info)  # type: ignore
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 345, in do_one_iteration
+    priority = yield self.process_one(wait=False)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 735, in run
+    value = future.result()
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 209, in wrapper
+    yielded = next(result)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 358, in process_one
+    priority, t, dispatch, args = self.msg_queue.get_nowait()
+AttributeError: 'Kernel' object has no attribute 'msg_queue'
+
+Future exception was never retrieved
+future: <Future finished exception=AttributeError("'Kernel' object has no attribute 'msg_queue'")>
+Traceback (most recent call last):
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 742, in run
+    yielded = self.gen.throw(*exc_info)  # type: ignore
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 345, in do_one_iteration
+    priority = yield self.process_one(wait=False)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 735, in run
+    value = future.result()
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 209, in wrapper
+    yielded = next(result)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 358, in process_one
+    priority, t, dispatch, args = self.msg_queue.get_nowait()
+AttributeError: 'Kernel' object has no attribute 'msg_queue'
+
+Future exception was never retrieved
+future: <Future finished exception=AttributeError("'Kernel' object has no attribute 'msg_queue'")>
+Traceback (most recent call last):
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 742, in run
+    yielded = self.gen.throw(*exc_info)  # type: ignore
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 345, in do_one_iteration
+    priority = yield self.process_one(wait=False)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 735, in run
+    value = future.result()
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 209, in wrapper
+    yielded = next(result)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 358, in process_one
+    priority, t, dispatch, args = self.msg_queue.get_nowait()
+AttributeError: 'Kernel' object has no attribute 'msg_queue'
+
+Future exception was never retrieved
+future: <Future finished exception=AttributeError("'Kernel' object has no attribute 'msg_queue'")>
+Traceback (most recent call last):
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 742, in run
+    yielded = self.gen.throw(*exc_info)  # type: ignore
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 345, in do_one_iteration
+    priority = yield self.process_one(wait=False)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 735, in run
+    value = future.result()
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 209, in wrapper
+    yielded = next(result)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 358, in process_one
+    priority, t, dispatch, args = self.msg_queue.get_nowait()
+AttributeError: 'Kernel' object has no attribute 'msg_queue'
+
+Future exception was never retrieved
+future: <Future finished exception=AttributeError("'Kernel' object has no attribute 'msg_queue'")>
+Traceback (most recent call last):
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 742, in run
+    yielded = self.gen.throw(*exc_info)  # type: ignore
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 345, in do_one_iteration
+    priority = yield self.process_one(wait=False)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 735, in run
+    value = future.result()
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 209, in wrapper
+    yielded = next(result)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 358, in process_one
+    priority, t, dispatch, args = self.msg_queue.get_nowait()
+AttributeError: 'Kernel' object has no attribute 'msg_queue'
+
+Future exception was never retrieved
+future: <Future finished exception=AttributeError("'Kernel' object has no attribute 'msg_queue'")>
+Traceback (most recent call last):
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 742, in run
+    yielded = self.gen.throw(*exc_info)  # type: ignore
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 345, in do_one_iteration
+    priority = yield self.process_one(wait=False)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 735, in run
+    value = future.result()
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 209, in wrapper
+    yielded = next(result)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 358, in process_one
+    priority, t, dispatch, args = self.msg_queue.get_nowait()
+AttributeError: 'Kernel' object has no attribute 'msg_queue'
+
+Future exception was never retrieved
+future: <Future finished exception=AttributeError("'Kernel' object has no attribute 'msg_queue'")>
+Traceback (most recent call last):
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 742, in run
+    yielded = self.gen.throw(*exc_info)  # type: ignore
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 345, in do_one_iteration
+    priority = yield self.process_one(wait=False)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 735, in run
+    value = future.result()
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 209, in wrapper
+    yielded = next(result)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 358, in process_one
+    priority, t, dispatch, args = self.msg_queue.get_nowait()
+AttributeError: 'Kernel' object has no attribute 'msg_queue'
+
+Future exception was never retrieved
+future: <Future finished exception=AttributeError("'Kernel' object has no attribute 'msg_queue'")>
+Traceback (most recent call last):
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 742, in run
+    yielded = self.gen.throw(*exc_info)  # type: ignore
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 345, in do_one_iteration
+    priority = yield self.process_one(wait=False)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 735, in run
+    value = future.result()
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 209, in wrapper
+    yielded = next(result)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 358, in process_one
+    priority, t, dispatch, args = self.msg_queue.get_nowait()
+AttributeError: 'Kernel' object has no attribute 'msg_queue'
+
+Future exception was never retrieved
+future: <Future finished exception=AttributeError("'Kernel' object has no attribute 'msg_queue'")>
+Traceback (most recent call last):
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 742, in run
+    yielded = self.gen.throw(*exc_info)  # type: ignore
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 345, in do_one_iteration
+    priority = yield self.process_one(wait=False)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 735, in run
+    value = future.result()
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 209, in wrapper
+    yielded = next(result)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 358, in process_one
+    priority, t, dispatch, args = self.msg_queue.get_nowait()
+AttributeError: 'Kernel' object has no attribute 'msg_queue'
+
+Future exception was never retrieved
+future: <Future finished exception=AttributeError("'Kernel' object has no attribute 'msg_queue'")>
+Traceback (most recent call last):
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 742, in run
+    yielded = self.gen.throw(*exc_info)  # type: ignore
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 345, in do_one_iteration
+    priority = yield self.process_one(wait=False)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 735, in run
+    value = future.result()
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 209, in wrapper
+    yielded = next(result)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 358, in process_one
+    priority, t, dispatch, args = self.msg_queue.get_nowait()
+AttributeError: 'Kernel' object has no attribute 'msg_queue'
+
+Future exception was never retrieved
+future: <Future finished exception=AttributeError("'Kernel' object has no attribute 'msg_queue'")>
+Traceback (most recent call last):
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 742, in run
+    yielded = self.gen.throw(*exc_info)  # type: ignore
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 345, in do_one_iteration
+    priority = yield self.process_one(wait=False)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 735, in run
+    value = future.result()
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 209, in wrapper
+    yielded = next(result)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 358, in process_one
+    priority, t, dispatch, args = self.msg_queue.get_nowait()
+AttributeError: 'Kernel' object has no attribute 'msg_queue'
+
+Future exception was never retrieved
+future: <Future finished exception=AttributeError("'Kernel' object has no attribute 'msg_queue'")>
+Traceback (most recent call last):
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 742, in run
+    yielded = self.gen.throw(*exc_info)  # type: ignore
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 345, in do_one_iteration
+    priority = yield self.process_one(wait=False)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 735, in run
+    value = future.result()
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 209, in wrapper
+    yielded = next(result)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 358, in process_one
+    priority, t, dispatch, args = self.msg_queue.get_nowait()
+AttributeError: 'Kernel' object has no attribute 'msg_queue'
+
+Future exception was never retrieved
+future: <Future finished exception=AttributeError("'Kernel' object has no attribute 'msg_queue'")>
+Traceback (most recent call last):
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 742, in run
+    yielded = self.gen.throw(*exc_info)  # type: ignore
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 345, in do_one_iteration
+    priority = yield self.process_one(wait=False)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 735, in run
+    value = future.result()
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 209, in wrapper
+    yielded = next(result)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 358, in process_one
+    priority, t, dispatch, args = self.msg_queue.get_nowait()
+AttributeError: 'Kernel' object has no attribute 'msg_queue'
+
+Future exception was never retrieved
+future: <Future finished exception=AttributeError("'Kernel' object has no attribute 'msg_queue'")>
+Traceback (most recent call last):
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 742, in run
+    yielded = self.gen.throw(*exc_info)  # type: ignore
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 345, in do_one_iteration
+    priority = yield self.process_one(wait=False)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 735, in run
+    value = future.result()
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 209, in wrapper
+    yielded = next(result)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 358, in process_one
+    priority, t, dispatch, args = self.msg_queue.get_nowait()
+AttributeError: 'Kernel' object has no attribute 'msg_queue'
+
+Future exception was never retrieved
+future: <Future finished exception=AttributeError("'Kernel' object has no attribute 'msg_queue'")>
+Traceback (most recent call last):
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 742, in run
+    yielded = self.gen.throw(*exc_info)  # type: ignore
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 345, in do_one_iteration
+    priority = yield self.process_one(wait=False)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 735, in run
+    value = future.result()
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 209, in wrapper
+    yielded = next(result)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 358, in process_one
+    priority, t, dispatch, args = self.msg_queue.get_nowait()
+AttributeError: 'Kernel' object has no attribute 'msg_queue'
+
+Future exception was never retrieved
+future: <Future finished exception=AttributeError("'Kernel' object has no attribute 'msg_queue'")>
+Traceback (most recent call last):
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 742, in run
+    yielded = self.gen.throw(*exc_info)  # type: ignore
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 345, in do_one_iteration
+    priority = yield self.process_one(wait=False)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 735, in run
+    value = future.result()
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 209, in wrapper
+    yielded = next(result)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 358, in process_one
+    priority, t, dispatch, args = self.msg_queue.get_nowait()
+AttributeError: 'Kernel' object has no attribute 'msg_queue'
+
+Future exception was never retrieved
+future: <Future finished exception=AttributeError("'Kernel' object has no attribute 'msg_queue'")>
+Traceback (most recent call last):
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 742, in run
+    yielded = self.gen.throw(*exc_info)  # type: ignore
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 345, in do_one_iteration
+    priority = yield self.process_one(wait=False)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 735, in run
+    value = future.result()
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 209, in wrapper
+    yielded = next(result)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 358, in process_one
+    priority, t, dispatch, args = self.msg_queue.get_nowait()
+AttributeError: 'Kernel' object has no attribute 'msg_queue'
+
+Future exception was never retrieved
+future: <Future finished exception=AttributeError("'Kernel' object has no attribute 'msg_queue'")>
+Traceback (most recent call last):
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 742, in run
+    yielded = self.gen.throw(*exc_info)  # type: ignore
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 345, in do_one_iteration
+    priority = yield self.process_one(wait=False)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 735, in run
+    value = future.result()
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 209, in wrapper
+    yielded = next(result)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 358, in process_one
+    priority, t, dispatch, args = self.msg_queue.get_nowait()
+AttributeError: 'Kernel' object has no attribute 'msg_queue'
+
+Future exception was never retrieved
+future: <Future finished exception=AttributeError("'Kernel' object has no attribute 'msg_queue'")>
+Traceback (most recent call last):
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 742, in run
+    yielded = self.gen.throw(*exc_info)  # type: ignore
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 345, in do_one_iteration
+    priority = yield self.process_one(wait=False)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 735, in run
+    value = future.result()
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 209, in wrapper
+    yielded = next(result)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 358, in process_one
+    priority, t, dispatch, args = self.msg_queue.get_nowait()
+AttributeError: 'Kernel' object has no attribute 'msg_queue'
+
+Future exception was never retrieved
+future: <Future finished exception=AttributeError("'Kernel' object has no attribute 'msg_queue'")>
+Traceback (most recent call last):
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 742, in run
+    yielded = self.gen.throw(*exc_info)  # type: ignore
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 345, in do_one_iteration
+    priority = yield self.process_one(wait=False)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 735, in run
+    value = future.result()
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 209, in wrapper
+    yielded = next(result)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 358, in process_one
+    priority, t, dispatch, args = self.msg_queue.get_nowait()
+AttributeError: 'Kernel' object has no attribute 'msg_queue'
+
+Future exception was never retrieved
+future: <Future finished exception=AttributeError("'Kernel' object has no attribute 'msg_queue'")>
+Traceback (most recent call last):
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 742, in run
+    yielded = self.gen.throw(*exc_info)  # type: ignore
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 345, in do_one_iteration
+    priority = yield self.process_one(wait=False)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 735, in run
+    value = future.result()
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 209, in wrapper
+    yielded = next(result)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 358, in process_one
+    priority, t, dispatch, args = self.msg_queue.get_nowait()
+AttributeError: 'Kernel' object has no attribute 'msg_queue'
+
+Future exception was never retrieved
+future: <Future finished exception=AttributeError("'Kernel' object has no attribute 'msg_queue'")>
+Traceback (most recent call last):
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 742, in run
+    yielded = self.gen.throw(*exc_info)  # type: ignore
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 345, in do_one_iteration
+    priority = yield self.process_one(wait=False)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 735, in run
+    value = future.result()
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 209, in wrapper
+    yielded = next(result)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 358, in process_one
+    priority, t, dispatch, args = self.msg_queue.get_nowait()
+AttributeError: 'Kernel' object has no attribute 'msg_queue'
+
+Future exception was never retrieved
+future: <Future finished exception=AttributeError("'Kernel' object has no attribute 'msg_queue'")>
+Traceback (most recent call last):
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 742, in run
+    yielded = self.gen.throw(*exc_info)  # type: ignore
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 345, in do_one_iteration
+    priority = yield self.process_one(wait=False)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 735, in run
+    value = future.result()
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 209, in wrapper
+    yielded = next(result)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 358, in process_one
+    priority, t, dispatch, args = self.msg_queue.get_nowait()
+AttributeError: 'Kernel' object has no attribute 'msg_queue'
+
+Future exception was never retrieved
+future: <Future finished exception=AttributeError("'Kernel' object has no attribute 'msg_queue'")>
+Traceback (most recent call last):
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 742, in run
+    yielded = self.gen.throw(*exc_info)  # type: ignore
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 345, in do_one_iteration
+    priority = yield self.process_one(wait=False)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 735, in run
+    value = future.result()
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 209, in wrapper
+    yielded = next(result)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 358, in process_one
+    priority, t, dispatch, args = self.msg_queue.get_nowait()
+AttributeError: 'Kernel' object has no attribute 'msg_queue'
+
+Future exception was never retrieved
+future: <Future finished exception=AttributeError("'Kernel' object has no attribute 'msg_queue'")>
+Traceback (most recent call last):
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 742, in run
+    yielded = self.gen.throw(*exc_info)  # type: ignore
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 345, in do_one_iteration
+    priority = yield self.process_one(wait=False)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 735, in run
+    value = future.result()
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 209, in wrapper
+    yielded = next(result)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 358, in process_one
+    priority, t, dispatch, args = self.msg_queue.get_nowait()
+AttributeError: 'Kernel' object has no attribute 'msg_queue'
+
+Future exception was never retrieved
+future: <Future finished exception=AttributeError("'Kernel' object has no attribute 'msg_queue'")>
+Traceback (most recent call last):
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 742, in run
+    yielded = self.gen.throw(*exc_info)  # type: ignore
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 345, in do_one_iteration
+    priority = yield self.process_one(wait=False)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 735, in run
+    value = future.result()
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 209, in wrapper
+    yielded = next(result)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 358, in process_one
+    priority, t, dispatch, args = self.msg_queue.get_nowait()
+AttributeError: 'Kernel' object has no attribute 'msg_queue'
+
+Future exception was never retrieved
+future: <Future finished exception=AttributeError("'Kernel' object has no attribute 'msg_queue'")>
+Traceback (most recent call last):
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 742, in run
+    yielded = self.gen.throw(*exc_info)  # type: ignore
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 345, in do_one_iteration
+    priority = yield self.process_one(wait=False)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 735, in run
+    value = future.result()
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 209, in wrapper
+    yielded = next(result)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 358, in process_one
+    priority, t, dispatch, args = self.msg_queue.get_nowait()
+AttributeError: 'Kernel' object has no attribute 'msg_queue'
+
+Future exception was never retrieved
+future: <Future finished exception=AttributeError("'Kernel' object has no attribute 'msg_queue'")>
+Traceback (most recent call last):
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 742, in run
+    yielded = self.gen.throw(*exc_info)  # type: ignore
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 345, in do_one_iteration
+    priority = yield self.process_one(wait=False)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 735, in run
+    value = future.result()
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 209, in wrapper
+    yielded = next(result)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 358, in process_one
+    priority, t, dispatch, args = self.msg_queue.get_nowait()
+AttributeError: 'Kernel' object has no attribute 'msg_queue'
+
+Future exception was never retrieved
+future: <Future finished exception=AttributeError("'Kernel' object has no attribute 'msg_queue'")>
+Traceback (most recent call last):
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 742, in run
+    yielded = self.gen.throw(*exc_info)  # type: ignore
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 345, in do_one_iteration
+    priority = yield self.process_one(wait=False)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 735, in run
+    value = future.result()
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/tornado/gen.py", line 209, in wrapper
+    yielded = next(result)
+  File "/home/millejoh/miniconda3/envs/islands/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 358, in process_one
+    priority, t, dispatch, args = self.msg_queue.get_nowait()
+AttributeError: 'Kernel' object has no attribute 'msg_queue'
+:end:
 
 * Bearlibterminal
 

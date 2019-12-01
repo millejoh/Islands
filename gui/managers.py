@@ -309,8 +309,9 @@ class GUIEventLoop(BasicEventLoop):
         pass
 
     def step(self, root):
+        import pdb
+        pdb.set_trace()
         wm = self.window_manager
-        self.current_mouse_event = tcod.mouse_get_status()
         wm.focus_changed = False
         for event in tcod.event.get():
             self.current_event = event
