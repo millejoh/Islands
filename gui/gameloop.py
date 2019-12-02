@@ -5,8 +5,8 @@ import gui.events
 
 class BasicEventLoop(tcod.event.EventDispatch):
     def __init__(self):
-        self.current_key_event = tcod.Key()
-        self.current_mouse_event = tcod.Mouse()
+        # self.current_key_event = tcod.Key()
+        # self.current_mouse_event = tcod.Mouse()
         self.current_event = None
 
     def wait_for_event(self, mask):

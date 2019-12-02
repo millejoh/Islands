@@ -164,14 +164,18 @@ class Window(tc.Console):
                 for win in self.children:
                     win.unhide()
 
+
     def window_did_change(self):
         self.changed_p = True
 
-    def on_mouse_event(self, event):
+
+    def on_mouse_move(self, mouse):
         pass
+
 
     def on_key_event(self, event):
         pass
+
 
     def dirty_window(self):
         tlx, tly = self.tlx, self.tly
@@ -248,6 +252,17 @@ class Window(tc.Console):
         """
 
         return y == self.height-1 and 0 < x < (tc.R.screen_width() - self.width)
+
+    def on_drag_corner(self, x: int, y:int):
+        """
+        True if window coordinate (x, y) is on the window's drag handle.
+
+        :param x: Window x coordinate.
+        :param y: Window y coordinate.
+        :return: Boolean.
+        """
+
+        return (y == self.tly + self.height - 1) and (x == self.tlx + self.width - 1)
 
     def move_window(self, tlx, tly):
         """Move window so top left corner is located at (TLX, TLY), relative
@@ -381,10 +396,11 @@ class Window(tc.Console):
             self.height = new_height
             self._touch_windows()
 
-    def mouse_drag(self, mouse):
+    def on_mouse_drag(self, mouse):
         root = tc.R.active_root
         width, height = self.width, self.height
-        offset_x, offset_y = mouse.cx - self.tlx, mouse.cy - self.tly
+        m_x, m_y = mouse.tile
+        offset_x, offset_y = m_x - self.tlx, m_y - self.tly
         tlx, tly = 0, 0
         swidth = tc.R.screen_width()
         sheight = tc.R.screen_height()
@@ -393,60 +409,57 @@ class Window(tc.Console):
 
         self.raise_window(self.wmanager.auto_redraw)
         utils.copy_windows_to_console([win for win in self.wmanager.window_stack if win is not self],
-                                tc.R.scratch)
+                                      tc.R.scratch)
         tc.R.scratch.blit(tc.R.temp_console, self.tlx, self.tly,
                           self.width, self.height,
                           0, 0, 1.0, 1.0)
         tc.R.scratch.copy_to_console(root)  # copy-console-to-console
         self.copy_to_console(root)          # copy-window-to-console
         root.flush()
-        key = tcod.Key()
-        while mouse.lbutton:
-            tcod.sys_check_for_event(tcod.EVENT_MOUSE, key, mouse)
-            tlx = utils.clamp(0, swidth - self.width - 1, mouse.cx - offset_x)
-            tly = utils.clamp(0, sheight - self.height - 1, mouse.cy - offset_y)
-            if not (tlx == self.tlx and tly == self.tly):
-                # Erase window
-                tc.R.temp_console.blit(root, 0, 0, width, height,
-                                       self.tlx, self.tly, 1.0, 1.0)
-                self.move_window(tlx, tly)
-                # Save part of root console that win is covering
-                tc.R.scratch.blit(tc.R.temp_console, tlx, tly, width, height, 0, 0,
-                                  1.0, 1.0)
-                # Copy win to root
-                self.copy_to_console(root)
-            root.flush()
 
-    def mouse_resize(self, mouse):
+        tlx = utils.clamp(0, swidth - self.width - 1, m_x - offset_x)
+        tly = utils.clamp(0, sheight - self.height - 1, m_y - offset_y)
+        if not (tlx == self.tlx and tly == self.tly):
+            # Erase window
+            tc.R.temp_console.blit(root, 0, 0, width, height,
+                                   self.tlx, self.tly, 1.0, 1.0)
+            self.move_window(tlx, tly)
+            # Save part of root console that win is covering
+            tc.R.scratch.blit(tc.R.temp_console, tlx, tly, width, height, 0, 0,
+                              1.0, 1.0)
+            # Copy win to root
+            self.copy_to_console(root)
+        root.flush()
+
+    def on_mouse_resize(self, mouse):
         brx, bry = 0, 0
         root = tc.R.active_root
+        m_x, m_y = mouse.tile
 
         self.raise_window(True)
         utils.copy_windows_to_console([win for win in self.wmanager.window_stack if win is not self],
-                                tc.R.scratch)
+                                      tc.R.scratch)
         tc.R.scratch.blit(tc.R.temp_console, self.tlx, self.tly, self.width,
                           self.height, 0, 0, 1.0, 1.0)
         tc.R.scratch.copy_to_console(root)  # copy-console-to-console
         self.copy_to_console(root)  # copy-window-to-console
         root.flush()
-        key = tcod.Key()
-        while mouse.lbutton:
-            tcod.sys_check_for_event(tcod.EVENT_MOUSE, key, mouse)
-            brx = utils.clamp(self.tlx, tc.R.screen_width() - 1, mouse.cx)
-            bry = utils.clamp(self.tly, tc.R.screen_height() - 1, mouse.cy)
-            if not (brx == self.brx and bry == self.bry):
-                # Erase window
-                tc.R.temp_console.blit(root, 0, 0, self.width, self.height,
-                                       self.tlx, self.tly, 1.0, 1.0)
-                self.resize(brx - self.tlx, bry - self.tly)
-                self.prepare()
-                # Save part of root console that win is covering
-                tc.R.scratch.blit(tc.R.temp_console, self.tlx, self.tly,
-                                  self.width, self.height,
-                                  0, 0, 1.0, 1.0)
-                # Copy win to root
-                self.copy_to_console(root)
-            root.flush()
+
+        brx = utils.clamp(self.tlx, tc.R.screen_width() - 1, m_x)
+        bry = utils.clamp(self.tly, tc.R.screen_height() - 1, m_y)
+        if not (brx == self.brx and bry == self.bry):
+            # Erase window
+            tc.R.temp_console.blit(root, 0, 0, self.width, self.height,
+                                   self.tlx, self.tly, 1.0, 1.0)
+            self.resize(brx - self.tlx, bry - self.tly)
+            self.prepare()
+            # Save part of root console that win is covering
+            tc.R.scratch.blit(tc.R.temp_console, self.tlx, self.tly,
+                              self.width, self.height,
+                              0, 0, 1.0, 1.0)
+            # Copy win to root
+            self.copy_to_console(root)
+        root.flush()
 
 
 class GhostWindow(Window):

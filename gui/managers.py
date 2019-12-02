@@ -1,5 +1,6 @@
 __author__ = 'millejoh'
 
+import logging
 import tcod
 import gui.window
 from gui.console import RootConsole, default_font
@@ -56,6 +57,16 @@ class WindowManager(object):
     def screen_height(self):
         return self.rootc.height
 
+    def screen_to_window_coord(self, window, screen_x: int, screen_y: int):
+        """Convert screen tile coordinate to window local coordinate system.
+
+        window = Window whose coordinates we are trying to calculate.
+        screen_x = X tile coordinate on screen.
+        screen_y = Y tile coordinate on screen."""
+
+        win_tlx, win_tly = window.tlx, window.tly
+        return screen_x - win_tlx, screen_y - win_tly
+
     def top_window_at(self, x, y, stack=None, override_modal=False):
         """Return the window nearest the top of *WINDOW-STACK* which touches X,Y.
 
@@ -102,37 +113,37 @@ class WindowManager(object):
                                    self.rootc.screen_width(),
                                    self.rootc.screen_height())
 
-    def top_window_at(self, x, y, override_modal=False):
-        """Return the window nearest the top of *WINDOW-STACK* which touches X,Y.
+    # def top_window_at(self, x, y, override_modal=False):
+    #     """Return the window nearest the top of *WINDOW-STACK* which touches X,Y.
 
-        X, Y = Coordinates of a point on the screen (root console).
-        stack =  List of window objects to consider (default is to consider
-                 all non-hidden windows).
-        override-modal = Boolean.
+    #     X, Y = Coordinates of a point on the screen (root console).
+    #     stack =  List of window objects to consider (default is to consider
+    #              all non-hidden windows).
+    #     override-modal = Boolean.
 
-        Return the window nearest the top of *WINDOW-STACK* which touches X,Y.  If
-        OVERRIDE-MODAL? is true, then disregard whether a window is modal or not in
-        deciding which window to return. If this parameter is nil (default) then
-        whenever a modal window is at the top of WINDOW-STACK we can only return
-        that window from this function. If that window does not touch X,Y then NIL
-        is returned.
+    #     Return the window nearest the top of *WINDOW-STACK* which touches X,Y.  If
+    #     OVERRIDE-MODAL? is true, then disregard whether a window is modal or not in
+    #     deciding which window to return. If this parameter is nil (default) then
+    #     whenever a modal window is at the top of WINDOW-STACK we can only return
+    #     that window from this function. If that window does not touch X,Y then NIL
+    #     is returned.
 
-        """
-        if len(self.window_stack) == 0:
-            return None
-        else:
-            x, y = translate_negative_coords(x, y)
-            top = self.window_stack[0]
-            if not override_modal and top.is_modal:
-                if top.touches_spot(x, y):
-                    return top
-                else:
-                    return None
-            else:
-                touching = [win for win in self.window_stack
-                            if win.touches_spot(x, y) and
-                            not isinstance(win, gui.window.GhostWindow)]
-                return touching[0] if len(touching) > 0 else touching
+    #     """
+    #     if len(self.window_stack) == 0:
+    #         return None
+    #     else:
+    #         x, y = translate_negative_coords(x, y)
+    #         top = self.window_stack[0]
+    #         if not override_modal and top.is_modal:
+    #             if top.touches_spot(x, y):
+    #                 return top
+    #             else:
+    #                 return None
+    #         else:
+    #             touching = [win for win in self.window_stack
+    #                         if win.touches_spot(x, y) and
+    #                         not isinstance(win, gui.window.GhostWindow)]
+    #             return touching[0] if len(touching) > 0 else touching
 
 
     def windows_at(self, x, y):
@@ -171,8 +182,8 @@ class GUIEventLoop(BasicEventLoop):
         :param double_click_speed:
         :param ipykernel:
         """
-        self.mouse_x = 0
-        self.mouse_y = 0
+        self.active_dragged_window = None
+        self.active_resize_window = None
         self.last_mouse_click = None
         self.drag_delay = drag_delay
         self.double_click_speed = double_click_speed
@@ -197,9 +208,10 @@ class GUIEventLoop(BasicEventLoop):
             self.step(root)
             root.flush()
 
-    def window_with_mouse_focus(self):
-        """Return the topmost window under the mouse pointer."""
-        return self.window_manager.top_window_at(self.mouse_x, self.mouse_y)
+    # def window_with_mouse_focus(self):
+    #     """Return the topmost window under the mouse pointer."""
+    #     x, y = last_mouse_click.tile[0], last_mouse_click.tile[1]
+    #     return self.window_manager.top_window_at(x, y)
 
 
     def window_with_key_focus(self):
@@ -210,20 +222,6 @@ class GUIEventLoop(BasicEventLoop):
             return self.window_with_mouse_focus()
 
 
-    def send_mouse_click_event(self, window, event):
-        double_click = False
-        if window:
-            if event.state.lbutton and event.state.cy == window.tly and event.state.cx == window.brx and window.can_close_p:
-                window.hide(True)
-            elif self.last_mouse_click and type(event) == type(self.last_mouse_click) and \
-                            (tcod.sys_elapsed_milli() - self.last_mouse_click.time) < self.double_click_speed:
-                double_click = True
-            self.last_mouse_click = MouseEvent(winx=event.state.cx - window.tlx,
-                                               winy=event.state.cy - window.tly,
-                                               mouse_state=event,
-                                               window=window,
-                                               double_click=double_click)
-            window.on_mouse_event(self.last_mouse_click)
 
     def send_key_event(self, window, key, x, y):
         key.window = window
@@ -245,9 +243,6 @@ class GUIEventLoop(BasicEventLoop):
         else:
             return transparency_to_fade(win.transparency_unfocused)
 
-
-    def send_mouse_move_event(self, window, event):
-        pass
 
     def handle_drag_event(self, mouse_event):
         """Check for and handle (if necessary) drag events.
@@ -281,21 +276,56 @@ class GUIEventLoop(BasicEventLoop):
 
 
     def ev_mousemotion(self, mouse):
-        wm = self.window_manager
-        self.mouse_x, self.mouse_y = mouse.pixel[0], mouse.pixel[1]
-        wm.focus_changed = self.window_with_mouse_focus() != wm.last_topwin
-        self.send_mouse_move_event(self.window_with_mouse_focus(), mouse)
+        if self.active_dragged_window:
+            self.active_dragged_window.on_mouse_drag(mouse)
+        elif self.active_resize_window:
+            self.active_resize_window.on_mouse_resize(mouse)
+        else:
+            tx, ty = mouse.tile
+            wm = self.window_manager
+            win = wm.top_window_at(tx, ty)
+            if win:
+                win.on_mouse_move(mouse)
 
 
-    def ev_mousebuttonevent(self, mouse):
+    # def send_mouse_click_event(self, window, event):
+    #     double_click = False
+    #     if window:
+    #         if event.state.lbutton and event.state.cy == window.tly and event.state.cx == window.brx and window.can_close_p:
+    #             window.hide(True)
+    #         elif self.last_mouse_click and type(event) == type(self.last_mouse_click) and \
+    #                         (tcod.sys_elapsed_milli() - self.last_mouse_click.time) < self.double_click_speed:
+    #             double_click = True
+    #         self.last_mouse_click = MouseEvent(winx=event.state.cx - window.tlx,
+    #                                            winy=event.state.cy - window.tly,
+    #                                            mouse_state=event,
+    #                                            window=window,
+    #                                            double_click=double_click)
+    #         window.on_mouse_event(self.last_mouse_click)
+
+    def ev_mousebuttondown(self, mouse):
         wm = self.window_manager
-        self.mouse_x, self.mouse_y = mouse.pixel[0], mouse.pixel[1]
-        wm.topwin = self.window_with_mouse_focus()
-        wm.focus_changed = wm.topwin != wm.last_topwin
-        self.send_mouse_click_event(wm.topwin, mouse)
-        if mouse.type == "MOUSEBUTTONDOWN" and mouse.state == tcod.event.BUTTON_LEFT:
-            wm.topwin.raise_window(redraw=wm.auto_redraw)
-            self.handle_drag_event(self.current_event)
+        t_x, t_y = mouse.tile
+        win = wm.top_window_at(t_x, t_y)
+        if win:
+            wm.topwin = win
+            wm.focus_changed = wm.topwin != wm.last_topwin
+            # TODO: Send on_mouse_down notification and handle double clicks!
+            if mouse.button == tcod.event.BUTTON_LEFT:
+                win_x, win_y = wm.screen_to_window_coord(win, t_x, t_y)
+                win.raise_window(redraw=wm.auto_redraw)
+                if win.can_drag_p and win.on_upper_window_border(win_x, win_y):
+                    self.active_dragged_window = win
+                elif win.can_resize_p and win.on_drag_corner(win_x, win_y):
+                    self.active_resize_window = win
+
+
+    def ev_mousebuttonup(self, mouse):
+        # TODO: Send on_mouse_up notifications to active/top window
+        if mouse.button == tcod.event.BUTTON_LEFT:
+            self.active_dragged_window = False
+            self.active_resized_window = False
+
 
     def ev_keyboardevent(self, key):
         wm = self.window_manager
@@ -309,8 +339,6 @@ class GUIEventLoop(BasicEventLoop):
         pass
 
     def step(self, root):
-        import pdb
-        pdb.set_trace()
         wm = self.window_manager
         wm.focus_changed = False
         for event in tcod.event.get():
