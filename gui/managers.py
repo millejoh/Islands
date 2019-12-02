@@ -323,8 +323,8 @@ class GUIEventLoop(BasicEventLoop):
     def ev_mousebuttonup(self, mouse):
         # TODO: Send on_mouse_up notifications to active/top window
         if mouse.button == tcod.event.BUTTON_LEFT:
-            self.active_dragged_window = False
-            self.active_resized_window = False
+            self.active_dragged_window = None
+            self.active_resized_window = None
 
 
     def ev_keyboardevent(self, key):
