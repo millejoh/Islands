@@ -1,11 +1,12 @@
 __author__ = 'millejoh'
 
 import logging
-import tcod
+
 import gui.window
+import tcod
 from gui.console import RootConsole, default_font
-from gui.gameloop import BasicEventLoop
 from gui.events import *
+from gui.gameloop import BasicEventLoop
 from gui.utils import translate_negative_coords, transparency_to_fade
 
 try:
@@ -242,37 +243,6 @@ class GUIEventLoop(BasicEventLoop):
             return transparency_to_fade(win.transparency)
         else:
             return transparency_to_fade(win.transparency_unfocused)
-
-
-    def handle_drag_event(self, mouse_event):
-        """Check for and handle (if necessary) drag events.
-        """
-        start = tcod.sys_elapsed_milli()
-        dragged = False
-        mouse = mouse_event.state
-        ox, oy = mouse.cx, mouse.cy
-        key = tcod.Key()
-        while mouse.lbutton:
-            tcod.sys_check_for_event(tcod.EVENT_MOUSE, key, mouse)
-            mouse.dx, mouse.dy = ox - mouse.cx, oy - mouse.cy
-            if (tcod.sys_elapsed_milli() > (self.drag_delay * 1000 + start)) and \
-                    (mouse.dx != 0 or mouse.dy != 0):
-                dragged = True
-                # Are we dragging on the window title (move!)?
-                if self.window_manager.topwin.can_drag_p and \
-                    self.window_manager.topwin.on_upper_window_border(mouse.cx - self.window_manager.topwin.tlx,
-                                                       mouse.cy - self.window_manager.topwin.tly):
-                    self.window_manager.topwin.mouse_drag(mouse)
-
-                # Are we dragging on the bottom right corner (resize!)?
-                elif self.window_manager.topwin.can_resize_p and \
-                    ox == (self.window_manager.topwin.tlx + self.window_manager.topwin.width - 1) and \
-                    oy == (self.window_manager.topwin.tly + self.window_manager.topwin.height - 1):
-                    self.window_manager.topwin.mouse_resize(mouse)
-                else:
-                    self.window_manager.topwin.on_mouse_event(MouseDragEvent(winx=mouse.cx - self.window_manager.topwin.tlx,
-                                                              winy=mouse.cy - self.window_manager.topwin.tly,
-                                                              mouse_state=mouse_event))
 
 
     def ev_mousemotion(self, mouse):

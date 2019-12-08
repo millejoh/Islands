@@ -3,14 +3,17 @@ A simple GUI using the TCOD library. Very much inspired by cl-dormouse.
 One might even go so far as to say "stolen from." Seems like a good way
 to learn a language (and library) to me.
 """
+import logging
 from collections import namedtuple
 from math import floor
 
-import tcod
 import gui.console as tc
 import gui.utils as utils
+import tcod
 from gui.events import *
 
+logger = logging.getLogger(__name__)
+# logger.setLevel(logging.DEBUG)
 
 class Window(tc.Console):
     def __init__(self, tlx=0, tly=0, width=5, height=5, hidden=False,
@@ -237,7 +240,8 @@ class Window(tc.Console):
 
         """
 
-        return y == 0 and 0 < x < (tc.R.screen_width() - self.width)
+        return y == 0 and ( 0 < x < self.width )
+
 
     def on_lower_window_border(self, x: int, y:int):
         """
@@ -248,7 +252,8 @@ class Window(tc.Console):
         :return: Boolean.
         """
 
-        return y == self.height-1 and 0 < x < (tc.R.screen_width() - self.width)
+        return y == self.height-1 and ( 0 < x <  self.width )
+
 
     def on_drag_corner(self, x: int, y:int):
         """
@@ -259,7 +264,21 @@ class Window(tc.Console):
         :return: Boolean.
         """
 
-        return (y == self.tly + self.height - 1) and (x == self.tlx + self.width - 1)
+        return (y == self.height-1) and (x == self.width-1)
+
+
+    def on_close_corner(self, x: int, y: int):
+        """
+        True if window coordinate (x, y) is on the window's close handle.
+
+        :param x: Window x coordinate.
+        :param y: Window y coordinate.
+        :return: Boolean.
+        """
+
+        logger.debug("Check on_close_corner: x={}, y={}, width={}".format(x, y, self.width))
+        return (y == 0) and (x == self.width-1)
+
 
     def move_window(self, tlx, tly):
         """Move window so top left corner is located at (TLX, TLY), relative
@@ -395,9 +414,13 @@ class Window(tc.Console):
 
     # Event Handling
     def on_mouse_motion(self, mouse):
-        pass
+        if self.__active_drag:
+            self.handle_drag(mouse)
+        if self.__active_resize:
+            self.handle_resize(mouse)
 
     def on_mouse_buttondown(self, mouse):
+        logger.debug("Window on_mouse_buttondown: {}".format(mouse))
         t_x, t_y = mouse.tile
         wm = self.wmanager
         if mouse.button == tcod.event.BUTTON_LEFT:
@@ -409,17 +432,20 @@ class Window(tc.Console):
                 self.__active_resize = True
 
     def on_mouse_buttonup(self, mouse):
+        logger.debug("Window on_mouse_buttonup: {}".format(mouse))
         if self.__active_drag:
             self.__active_drag = False
         if self.__active_resize:
             self.__active_resize = False
+        win_x, win_y = self.wmanager.screen_to_window_coord(self, mouse.tile[0], mouse.tile[1])
+        if self.on_close_corner(win_x, win_y) and self.can_close_p:
+            self.hide(True)
 
-    def on_mouse_drag(self, mouse):
+    def handle_drag(self, mouse):
+        logger.debug("handle_mouse_drag: {}".format(mouse))
         root = tc.R.active_root
         width, height = self.width, self.height
-        m_x, m_y = mouse.tile
-        offset_x, offset_y = m_x - self.tlx, m_y - self.tly
-        tlx, tly = 0, 0
+        offset = mouse.tile[0] - self.tlx
         swidth = tc.R.screen_width()
         sheight = tc.R.screen_height()
         tc.R.scratch.clear()
@@ -435,25 +461,34 @@ class Window(tc.Console):
         self.copy_to_console(root)          # copy-window-to-console
         root.flush()
 
-        tlx = utils.clamp(0, swidth - self.width - 1, m_x - offset_x)
-        tly = utils.clamp(0, sheight - self.height - 1, m_y - offset_y)
-        if not (tlx == self.tlx and tly == self.tly):
-            # Erase window
-            tc.R.temp_console.blit(root, 0, 0, width, height,
-                                   self.tlx, self.tly, 1.0, 1.0)
-            self.move_window(tlx, tly)
-            # Save part of root console that win is covering
-            tc.R.scratch.blit(tc.R.temp_console, tlx, tly, width, height, 0, 0,
-                              1.0, 1.0)
-            # Copy win to root
-            self.copy_to_console(root)
-        root.flush()
+        end_drag = False
+        while not end_drag:
+            n_tlx = self.tlx
+            n_tly = self.tly
+            mouse_events = [m for m in tcod.event.get() if m.type == "MOUSEMOTION" or
+                            m.type == "MOUSEBUTTONUP"]
+            if len(mouse_events) > 0:
+                mouse = mouse_events[-1]
+            if mouse.type == "MOUSEMOTION":
+                mx, my = mouse.tile
+                n_tlx = utils.clamp(0, swidth - self.width - 1, mx-offset)
+                n_tly = utils.clamp(0, sheight - self.height - 1, my)
+            if mouse.type == "MOUSEBUTTONUP":
+                self.__active_drag = False
+                end_drag = True
+            if not (n_tlx == self.tlx and n_tly == self.tly):
+                # Erase window
+                tc.R.temp_console.blit(root, 0, 0, width, height, self.tlx, self.tly, 1.0, 1.0)
+                self.move_window(n_tlx, n_tly)
+                # Save part of root console that win is covering
+                tc.R.scratch.blit(tc.R.temp_console, n_tlx, n_tly, width, height, 0, 0, 1.0, 1.0)
+                # Copy win to root
+                self.copy_to_console(root)
+                root.flush()
 
-    def on_mouse_resize(self, mouse):
+    def handle_resize(self, mouse):
         brx, bry = 0, 0
         root = tc.R.active_root
-        m_x, m_y = mouse.tile
-
         self.raise_window(True)
         utils.copy_windows_to_console([win for win in self.wmanager.window_stack if win is not self],
                                       tc.R.scratch)
@@ -463,21 +498,33 @@ class Window(tc.Console):
         self.copy_to_console(root)  # copy-window-to-console
         root.flush()
 
-        brx = utils.clamp(self.tlx, tc.R.screen_width() - 1, m_x)
-        bry = utils.clamp(self.tly, tc.R.screen_height() - 1, m_y)
-        if not (brx == self.brx and bry == self.bry):
-            # Erase window
-            tc.R.temp_console.blit(root, 0, 0, self.width, self.height,
-                                   self.tlx, self.tly, 1.0, 1.0)
-            self.resize(brx - self.tlx, bry - self.tly)
-            self.prepare()
-            # Save part of root console that win is covering
-            tc.R.scratch.blit(tc.R.temp_console, self.tlx, self.tly,
-                              self.width, self.height,
-                              0, 0, 1.0, 1.0)
-            # Copy win to root
-            self.copy_to_console(root)
-        root.flush()
+        end_resize = False
+        while not end_resize:
+            n_tlx = self.tlx
+            n_tly = self.tly
+            mouse_events = [m for m in tcod.event.get() if m.type == "MOUSEMOTION" or
+                            m.type == "MOUSEBUTTONUP"]
+            if len(mouse_events) > 0:
+                mouse = mouse_events[-1]
+            if mouse.type == "MOUSEMOTION":
+                m_x, m_y = mouse.tile
+                brx = utils.clamp(self.tlx, tc.R.screen_width() - 1, m_x)
+                bry = utils.clamp(self.tly, tc.R.screen_height() - 1, m_y)
+                if not (brx == self.brx and bry == self.bry):
+                    # Erase window
+                    tc.R.temp_console.blit(root, 0, 0, self.width, self.height,
+                                           self.tlx, self.tly, 1.0, 1.0)
+                    self.resize(brx - self.tlx, bry - self.tly)
+                    self.prepare()
+                    # Save part of root console that win is covering
+                    tc.R.scratch.blit(tc.R.temp_console, self.tlx, self.tly,
+                                      self.width, self.height, 0, 0, 1.0, 1.0)
+                    # Copy win to root
+                    self.copy_to_console(root)
+                    root.flush()
+            if mouse.type == "MOUSEBUTTONUP":
+                self.__active_resize = False
+                end_resize = True
 
 
 class GhostWindow(Window):

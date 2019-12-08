@@ -76,7 +76,12 @@ Lets focus on #4 and build a sample application that integrates with IPython.
   from gui.managers import GUIEventLoop, WindowManager
   from gui.window import Window, ListWindow
   from ipykernel.kernelbase import Kernel
+  import logging
   import time
+  import sys
+
+  # logging.basicConfig(level=logging.DEBUG, stream=sys.stdout)
+  logging.basicConfig(stream=sys.stdout)
 
   class DemoGuiGame(GUIEventLoop):
       def initialize(self):
