@@ -276,16 +276,10 @@ class GUIEventLoop(BasicEventLoop):
 
 
     def ev_mousemotion(self, mouse):
-        if self.active_dragged_window:
-            self.active_dragged_window.on_mouse_drag(mouse)
-        elif self.active_resize_window:
-            self.active_resize_window.on_mouse_resize(mouse)
-        else:
-            tx, ty = mouse.tile
-            wm = self.window_manager
-            win = wm.top_window_at(tx, ty)
-            if win:
-                win.on_mouse_move(mouse)
+        t_x, t_y = mouse.tile
+        win = self.window_manager.top_window_at(t_x, t_y)
+        if win:
+            win.on_mouse_motion(mouse)
 
 
     # def send_mouse_click_event(self, window, event):
@@ -310,21 +304,15 @@ class GUIEventLoop(BasicEventLoop):
         if win:
             wm.topwin = win
             wm.focus_changed = wm.topwin != wm.last_topwin
-            # TODO: Send on_mouse_down notification and handle double clicks!
-            if mouse.button == tcod.event.BUTTON_LEFT:
-                win_x, win_y = wm.screen_to_window_coord(win, t_x, t_y)
-                win.raise_window(redraw=wm.auto_redraw)
-                if win.can_drag_p and win.on_upper_window_border(win_x, win_y):
-                    self.active_dragged_window = win
-                elif win.can_resize_p and win.on_drag_corner(win_x, win_y):
-                    self.active_resize_window = win
+            win.on_mouse_buttondown(mouse)
+            # TODO: Handle double clicks!
 
 
     def ev_mousebuttonup(self, mouse):
-        # TODO: Send on_mouse_up notifications to active/top window
-        if mouse.button == tcod.event.BUTTON_LEFT:
-            self.active_dragged_window = None
-            self.active_resized_window = None
+        t_x, t_y = mouse.tile
+        win = self.window_manager.top_window_at(t_x, t_y)
+        if win:
+            win.on_mouse_buttonup(mouse)
 
 
     def ev_keyboardevent(self, key):

@@ -54,6 +54,7 @@ class Window(tc.Console):
         self.last_update_time = 0
         self.alive_p = True
         self.touching = []
+        self.__active_drag, self.__active_resize = False, False
 
         if parent:
             self.parent = parent
@@ -167,10 +168,6 @@ class Window(tc.Console):
 
     def window_did_change(self):
         self.changed_p = True
-
-
-    def on_mouse_move(self, mouse):
-        pass
 
 
     def on_key_event(self, event):
@@ -395,6 +392,27 @@ class Window(tc.Console):
             self.width = new_width
             self.height = new_height
             self._touch_windows()
+
+    # Event Handling
+    def on_mouse_motion(self, mouse):
+        pass
+
+    def on_mouse_buttondown(self, mouse):
+        t_x, t_y = mouse.tile
+        wm = self.wmanager
+        if mouse.button == tcod.event.BUTTON_LEFT:
+            win_x, win_y = wm.screen_to_window_coord(self, t_x, t_y)
+            self.raise_window(redraw=wm.auto_redraw)
+            if self.can_drag_p and self.on_upper_window_border(win_x, win_y):
+                self.__active_drag = True
+            elif self.can_resize_p and self.on_drag_corner(win_x, win_y):
+                self.__active_resize = True
+
+    def on_mouse_buttonup(self, mouse):
+        if self.__active_drag:
+            self.__active_drag = False
+        if self.__active_resize:
+            self.__active_resize = False
 
     def on_mouse_drag(self, mouse):
         root = tc.R.active_root
