@@ -13,7 +13,7 @@ import tcod
 from gui.events import *
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+# logger.setLevel(logging.DEBUG)
 
 
 class Window(tc.Console):
@@ -714,6 +714,17 @@ class ScrollView(Viewport):
         self.__vscroll_active = False
         self.hscroll_pos = 0
         self.vscroll_pos = 0
+
+    def scroll_vertically(self, dy):
+        """Scroll the view a given number of rows up or down."""
+
+        self.view_tly = utils.clamp(0, self.view_height, self.view_tly+dy)
+        return self.view_tly
+
+    def scroll_horizontally(self, dx):
+        """Scroll the view a given number of columns left or right."""
+        self.view_tlx = utils.clamp(0, self.view_width, self.view_tlx+dx)
+        return self.view_tlx
 
     def touches_hscroll_handle(self, x, y):
         """

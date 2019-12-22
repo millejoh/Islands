@@ -8,12 +8,7 @@ from gui.console import RootConsole, default_font
 from gui.events import *
 from gui.gameloop import BasicEventLoop
 from gui.utils import translate_negative_coords, transparency_to_fade
-
-try:
-    from ipykernel.zmqshell.eventloops import register_integration
-    support_ipy = True
-except ImportError:
-    support_ipy = False
+from threading import Timer
 
 class WindowManager(object):
     def __init__(self, screen_width, screen_height, auto_redraw=True, opaque=1, invisible=0, dimmed=75, bold_factor=1.4,
@@ -193,21 +188,20 @@ class GUIEventLoop(BasicEventLoop):
         self.end_game = False
         super().__init__()
 
-
-    def ipy_kernel_callback(dt, kernel):
-        kernel.do_one_iteration()
+    def step_kernel(self):
+        await self.ipykernel.do_one_iteration()
+        # self.iptimer.cancel()
+        # self.iptimer.start()
 
     def run(self):
         root = self.window_manager.rootc
         root.init_root()
         while (not self.end_game) and (not tcod.console_is_window_closed()):
-            #events = sys_get_events()
-            #self.handle_keys(key)
-            if self.ipykernel:
-                self.ipy_kernel_callback(self.ipykernel)
             root.clear()
             self.step(root)
             root.flush()
+            if self.ipykernel:
+                self.step_kernel()
 
     # def window_with_mouse_focus(self):
     #     """Return the topmost window under the mouse pointer."""
@@ -229,7 +223,6 @@ class GUIEventLoop(BasicEventLoop):
         key.winx = x
         key.winy = y
         window.on_key_event(key)
-#        kevent = KeyEvent(key, window=window, winx=x, winy=y)
 
 
     def fade_for_window(self, win):
@@ -251,21 +244,6 @@ class GUIEventLoop(BasicEventLoop):
         if win:
             win.on_mouse_motion(mouse)
 
-
-    # def send_mouse_click_event(self, window, event):
-    #     double_click = False
-    #     if window:
-    #         if event.state.lbutton and event.state.cy == window.tly and event.state.cx == window.brx and window.can_close_p:
-    #             window.hide(True)
-    #         elif self.last_mouse_click and type(event) == type(self.last_mouse_click) and \
-    #                         (tcod.sys_elapsed_milli() - self.last_mouse_click.time) < self.double_click_speed:
-    #             double_click = True
-    #         self.last_mouse_click = MouseEvent(winx=event.state.cx - window.tlx,
-    #                                            winy=event.state.cy - window.tly,
-    #                                            mouse_state=event,
-    #                                            window=window,
-    #                                            double_click=double_click)
-    #         window.on_mouse_event(self.last_mouse_click)
 
     def ev_mousebuttondown(self, mouse):
         wm = self.window_manager
@@ -305,11 +283,3 @@ class GUIEventLoop(BasicEventLoop):
         if wm.focus_changed:
             wm.last_topwin = wm.topwin
         wm.process_windows()
-
-if support_ipy:
-    @register_integration('tcod_gui')
-    def init_gui_manager(kernel):
-        global window_manager, gui_loop
-        window_manager = WindowManager(80, 60)
-        gui_loop = GUIEventLoop(window_manager, kernel)
-        gui_loop.run()

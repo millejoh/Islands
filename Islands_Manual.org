@@ -74,8 +74,8 @@ Lets focus on #4 and build a sample application that integrates with IPython.
   import tcod
   import tcod.event
   from gui.managers import GUIEventLoop, WindowManager
-  from gui.window import Window, ListWindow
-  from ipykernel.kernelbase import Kernel
+  from gui.window import Window, ListWindow, ScrollView
+  from ipykernel.eventloops import register_integration
   import logging
   import time
   import sys
@@ -86,7 +86,10 @@ Lets focus on #4 and build a sample application that integrates with IPython.
   class DemoGuiGame(GUIEventLoop):
       def initialize(self):
           self.w1 = Window(5, 5, 15, 15, title='Window 1', framed=True, window_manager=self.window_manager)
-          self.w2 = Window(10, 10, 20, 30, title='Window 2', framed=True, window_manager=self.window_manager)
+          self.w2 = ScrollView(tlx=10, tly=10, width=20, height=30,
+                               view_width=100, view_height=100,
+                               title='Scrolling Window 2', framed=True,
+                               window_manager=self.window_manager)
           self.list_view = ListWindow(tlx=15, tly=15, width=20, height=5, title='List Window', framed=True,
                                       window_manager=self.window_manager)
           self.list_view.add_item('An item.', 'An item.')
@@ -115,17 +118,19 @@ Lets focus on #4 and build a sample application that integrates with IPython.
           # self.game_step()
           end = time.monotonic()
 
-
-  wm = WindowManager(80, 60)
-  kernel = Kernel()
-  demo = DemoGuiGame(window_manager=wm)#, ipykernel=kernel)
-  demo.initialize()
-  demo.run()
+  @register_integration('islands')
+  def run_islands(kernel):
+      global wm, demo
+      wm = WindowManager(80, 60)
+      demo = DemoGuiGame(window_manager=wm, ipykernel=kernel)
+      demo.initialize()
+      demo.run()
 #+END_SRC
 
 #+RESULTS: 17150a98-5a72-4bbb-a10f-e74261c71c0e
 :results:
 :end:
+
 
 * Bearlibterminal
 
