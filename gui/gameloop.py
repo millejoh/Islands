@@ -1,7 +1,8 @@
 __author__ = 'millejoh'
 
-import tcod.event
 import gui.events
+import tcod.event
+
 
 class BasicEventLoop(tcod.event.EventDispatch):
     def __init__(self):

@@ -170,13 +170,12 @@ class WindowManager(object):
 
 
 class GUIEventLoop(BasicEventLoop):
-    def __init__(self, window_manager, drag_delay=0.05, double_click_speed=1000, ipykernel=None):
+    def __init__(self, window_manager, drag_delay=0.05, double_click_speed=1000):
         """
 
         :param window_manager:
         :param drag_delay:
         :param double_click_speed:
-        :param ipykernel:
         """
         self.active_dragged_window = None
         self.active_resize_window = None
@@ -184,14 +183,8 @@ class GUIEventLoop(BasicEventLoop):
         self.drag_delay = drag_delay
         self.double_click_speed = double_click_speed
         self.window_manager = window_manager
-        self.ipykernel = ipykernel
         self.end_game = False
         super().__init__()
-
-    def step_kernel(self):
-        await self.ipykernel.do_one_iteration()
-        # self.iptimer.cancel()
-        # self.iptimer.start()
 
     def run(self):
         root = self.window_manager.rootc

@@ -68,14 +68,16 @@ create an application. What is missing:
  4. Integration with IPython.
 
 Lets focus on #4 and build a sample application that integrates with IPython.
+Or, screw integrating with IPython - let's just put the main loop on a thread!
+Later we can think about using true multiprocessing.
 
 #+NAME: 17150a98-5a72-4bbb-a10f-e74261c71c0e
 #+BEGIN_SRC ein-python :session http://localhost:8888/Islands_tcod.ipynb :results drawer
   import tcod
   import tcod.event
   from gui.managers import GUIEventLoop, WindowManager
-  from gui.window import Window, ListWindow, ScrollView
-  from ipykernel.eventloops import register_integration
+  from gui.window import Window, ListWindow
+  from threading import Thread
   import logging
   import time
   import sys
@@ -115,16 +117,15 @@ Lets focus on #4 and build a sample application that integrates with IPython.
                   self.end_game = True
           super().step(root)
           self.print_debug_info()
-          # self.game_step()
           end = time.monotonic()
 
-  @register_integration('islands')
-  def run_islands(kernel):
-      global wm, demo
+  def start_demo():
       wm = WindowManager(80, 60)
-      demo = DemoGuiGame(window_manager=wm, ipykernel=kernel)
+      demo = DemoGuiGame(window_manager=wm)
       demo.initialize()
-      demo.run()
+      t = Thread(target=demo.run, name="DemoGUIThread")
+      t.start()
+      return t, demo
 #+END_SRC
 
 #+RESULTS: 17150a98-5a72-4bbb-a10f-e74261c71c0e
