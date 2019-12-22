@@ -175,13 +175,12 @@ class WindowManager(object):
 
 
 class GUIEventLoop(BasicEventLoop):
-    def __init__(self, window_manager, drag_delay=0.05, double_click_speed=1000, ipykernel=None):
+    def __init__(self, window_manager, drag_delay=0.05, double_click_speed=1000):
         """
 
         :param window_manager:
         :param drag_delay:
         :param double_click_speed:
-        :param ipykernel:
         """
         self.active_dragged_window = None
         self.active_resize_window = None
@@ -189,22 +188,15 @@ class GUIEventLoop(BasicEventLoop):
         self.drag_delay = drag_delay
         self.double_click_speed = double_click_speed
         self.window_manager = window_manager
-        self.ipykernel = ipykernel
         self.end_game = False
         super().__init__()
 
 
-    def ipy_kernel_callback(dt, kernel):
-        kernel.do_one_iteration()
 
     def run(self):
         root = self.window_manager.rootc
         root.init_root()
         while (not self.end_game) and (not tcod.console_is_window_closed()):
-            #events = sys_get_events()
-            #self.handle_keys(key)
-            if self.ipykernel:
-                self.ipy_kernel_callback(self.ipykernel)
             root.clear()
             self.step(root)
             root.flush()
@@ -305,11 +297,3 @@ class GUIEventLoop(BasicEventLoop):
         if wm.focus_changed:
             wm.last_topwin = wm.topwin
         wm.process_windows()
-
-if support_ipy:
-    @register_integration('tcod_gui')
-    def init_gui_manager(kernel):
-        global window_manager, gui_loop
-        window_manager = WindowManager(80, 60)
-        gui_loop = GUIEventLoop(window_manager, kernel)
-        gui_loop.run()
